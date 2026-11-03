@@ -1,4 +1,4 @@
-/* Afix site.js v0.29: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.30: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -98,7 +98,7 @@
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component, traag beginnend, over iets meer dan de helft van de hero, samen met de achtergrondvorm
+     hero-home_component, traag beginnend, over 70% van de herohoogte, samen met de achtergrondvorm
      (hero-home_background en het vervolg ervan in Expertises, expertises_background). Hover of toetsenbordfocus op
      een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
      tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
@@ -153,8 +153,8 @@
       function fade() {
         ticking = false;
         if (reduce.matches) return gsap.set(fading, { clearProps: 'opacity' });
-        // Klaar na iets meer dan de helft van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
-        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.55 * hero.offsetHeight), 0, 1);
+        // Klaar na 70% van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
+        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.7 * hero.offsetHeight), 0, 1);
         gsap.set(fading, { opacity: 1 - p * p });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
