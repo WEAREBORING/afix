@@ -9,6 +9,17 @@
   body { font-family: system-ui, sans-serif; margin: 2rem; }
   .card { display: inline-block; padding: 1rem; border: 1px solid #ccc; }
   #result { margin-top: 2rem; font-weight: bold; }
+  /* Nabootsing van de Webflow-classes waar de modules op leunen */
+  .panel, .menu { display: none; }
+  .tab { opacity: .3; background: transparent; color: #000; }
+  .tab:first-child { opacity: 1; background: rgb(28, 33, 28); color: rgb(255, 255, 255); }
+  .tabpanel { display: none; }
+  .tabpanel:first-child { display: block; }
+  .row { display: flex; gap: 1rem; overflow: auto hidden; scroll-snap-type: x mandatory; width: 30rem; }
+  .row > div { flex: none; width: 12rem; height: 4rem; background: #eee; scroll-snap-align: start; }
+  .stack { display: grid; }
+  .stack > div { grid-area: 1 / 1; opacity: 0; visibility: hidden; }
+  .stack > div:first-child { opacity: 1; visibility: visible; }
 </style>
 </head>
 <body>
@@ -23,11 +34,35 @@
 
 <a class="card" href="#" data-a-hover>Hover mij <span data-a-hover-x="0.5rem">&rarr;</span></a>
 
+<header data-a-nav>
+  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Strategie <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
+  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Websites <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
+  <button type="button" aria-expanded="false" data-a-nav-toggle>Menu</button>
+  <div data-a-nav-menu class="menu">Mobiel menu</div>
+</header>
+
+<div data-a-tabs="kennis">
+  <div role="tablist"><button type="button" role="tab" aria-selected="true" data-a-tab="blogs" class="tab">Blogs</button><button type="button" role="tab" aria-selected="false" data-a-tab="downloads" class="tab">Downloads</button><button type="button" role="tab" aria-selected="false" data-a-tab="tools" class="tab">Tools</button></div>
+  <div><div data-a-tab-panel="blogs" class="tabpanel">Blogs</div><div data-a-tab-panel="downloads" class="tabpanel">Downloads</div><div data-a-tab-panel="tools" class="tabpanel">Tools</div></div>
+</div>
+
+<section id="werk">
+  <button type="button" data-a-carousel-prev>Vorige</button><button type="button" data-a-carousel-next>Volgende</button>
+  <div data-a-carousel="werk" class="row"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div></div>
+</section>
+
+<section id="reviews">
+  <button type="button" data-a-carousel-prev>Vorige</button><button type="button" data-a-carousel-next>Volgende</button>
+  <div data-a-carousel="reviews" class="stack"><div>Review 1</div><div>Review 2</div><div>Review 3</div></div>
+  <div data-a-carousel-count><span data-a-carousel-current>01</span><span data-a-carousel-total> / 09</span></div>
+</section>
+
 <p id="result">Bezig...</p>
 
 <script src="../site.js"></script>
 <script>
-  // Lokale controle van de modules: open dit bestand in een browser (de hover controleer je met de muis)
+  // Lokale controle van de modules: open dit bestand via een lokale server (de hover, het slepen en het automatisch
+  // doorschuiven controleer je met de hand). Het resultaat verschijnt na een paar seconden.
   var forms = document.querySelectorAll('form');
   var checks = {
     jaartal: document.querySelector('[data-a-year]').textContent === String(new Date().getFullYear()),
@@ -35,8 +70,69 @@
     redirect: forms[0].getAttribute('data-redirect') === '/bedankt',
     'externe redirect geweigerd': !forms[1].hasAttribute('data-redirect')
   };
-  var failed = Object.keys(checks).filter(function (k) { return !checks[k]; });
-  document.getElementById('result').textContent = failed.length ? 'MISLUKT: ' + failed.join(', ') : 'Alle ' + Object.keys(checks).length + ' controles groen';
+  function $(sel) { return document.querySelector(sel); }
+  function key(el, k) { el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); }
+
+  // Nav
+  var dds = document.querySelectorAll('[data-a-dropdown]'), t1 = dds[0].querySelector('button'), t2 = dds[1].querySelector('button');
+  t1.click();
+  checks['dropdown opent'] = t1.getAttribute('aria-expanded') === 'true' && getComputedStyle(dds[0].querySelector('.panel')).display === 'flex' && t1.querySelector('svg').style.transform === 'rotate(180deg)';
+  t2.click();
+  checks['andere dropdown sluit'] = t1.getAttribute('aria-expanded') === 'false' && getComputedStyle(dds[0].querySelector('.panel')).display === 'none' && t2.getAttribute('aria-expanded') === 'true';
+  key(document, 'Escape');
+  checks['Escape sluit dropdown'] = t2.getAttribute('aria-expanded') === 'false' && document.activeElement === t2;
+  t1.click(); document.body.click();
+  checks['klik buiten sluit dropdown'] = t1.getAttribute('aria-expanded') === 'false';
+  var burger = $('[data-a-nav-toggle]');
+  burger.click();
+  checks['hamburger opent menu'] = burger.getAttribute('aria-expanded') === 'true' && getComputedStyle($('[data-a-nav-menu]')).display === 'flex';
+  burger.click();
+  checks['hamburger sluit menu'] = burger.getAttribute('aria-expanded') === 'false' && getComputedStyle($('[data-a-nav-menu]')).display === 'none';
+
+  // Tabs
+  var tabs = document.querySelectorAll('[data-a-tab]'), tpanels = document.querySelectorAll('[data-a-tab-panel]');
+  function shown(el) { return getComputedStyle(el).display !== 'none'; }
+  checks['tabs: eerste open'] = shown(tpanels[0]) && !shown(tpanels[1]) && tabs[0].tabIndex === 0 && tabs[1].tabIndex === -1;
+  tabs[1].click();
+  checks['tab wisselt'] = tabs[1].getAttribute('aria-selected') === 'true' && tabs[0].getAttribute('aria-selected') === 'false' && shown(tpanels[1]) && !shown(tpanels[0]);
+  checks['pil naar actieve tab'] = getComputedStyle(tabs[1]).backgroundColor === 'rgb(28, 33, 28)' && getComputedStyle(tabs[0]).opacity === '0.3';
+  key(tabs[1], 'ArrowRight'); key(tabs[2], 'ArrowRight');
+  checks['pijltjestoets (rond)'] = tabs[0].getAttribute('aria-selected') === 'true' && document.activeElement === tabs[0] && shown(tpanels[0]);
+  checks['tab koppelt paneel'] = tpanels[2].getAttribute('aria-labelledby') === tabs[2].id && tabs[2].getAttribute('aria-controls') === tpanels[2].id;
+
+  // Stapel
+  var cards = document.querySelectorAll('.stack > div'), sNext = $('#reviews [data-a-carousel-next]'), sPrev = $('#reviews [data-a-carousel-prev]');
+  function visible(el) { return getComputedStyle(el).visibility === 'visible'; }
+  checks['teller start'] = $('[data-a-carousel-current]').textContent === '01' && $('[data-a-carousel-total]').textContent === ' / 03';
+  sNext.click();
+  checks['stapel volgende'] = visible(cards[1]) && !visible(cards[0]) && $('[data-a-carousel-current]').textContent === '02';
+  sPrev.click(); sPrev.click();
+  checks['stapel vorige (rond)'] = visible(cards[2]) && $('[data-a-carousel-current]').textContent === '03';
+  checks['stapel aria-live'] = $('.stack').getAttribute('aria-live') === 'polite';
+
+  // Scrollrij: pas na het laden (vóór de eerste weergave negeert de browser smooth scrollen), en dat scrollen duurt even
+  var row = $('.row');
+  window.addEventListener('load', function () { setTimeout(rowChecks, 300); });
+  function rowChecks() {
+  $('#werk [data-a-carousel-next]').click();
+  setTimeout(function () {
+    checks['rij volgende kaart'] = Math.abs(row.scrollLeft - row.children[1].offsetLeft + row.children[0].offsetLeft) < 2;
+    $('#werk [data-a-carousel-prev]').click();
+    setTimeout(function () {
+      checks['rij vorige kaart'] = row.scrollLeft < 2;
+      $('#werk [data-a-carousel-prev]').click();
+      setTimeout(function () {
+        checks['rij begin naar eind'] = row.scrollLeft >= row.scrollWidth - row.clientWidth - 2;
+        report();
+      }, 1000);
+    }, 1000);
+  }, 1000);
+  }
+
+  function report() {
+    var failed = Object.keys(checks).filter(function (k) { return !checks[k]; });
+    document.getElementById('result').textContent = failed.length ? 'MISLUKT: ' + failed.join(', ') : 'Alle ' + Object.keys(checks).length + ' controles groen';
+  }
 </script>
 </body>
 </html>
