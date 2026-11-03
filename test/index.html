@@ -332,9 +332,9 @@
   }
 
   function fillChecks(done) {
-    // Tekst wordt woord voor woord scherp bij scrollen; schermlezer leest de hele zin
-    var el = $('#fill'), words = el.querySelectorAll('span[aria-hidden]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    checks['fill: tekst in woorden, aria-label met de hele zin'] = still ? !words.length : words.length === 11 && el.getAttribute('aria-label') === 'Niet als bureau op afstand, maar als verlengstuk van je team.';
+    // Tekst wordt letter voor letter scherp bij scrollen; schermlezer leest de hele zin
+    var el = $('#fill'), words = el.querySelectorAll('span[aria-hidden] > span'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    checks['fill: tekst in letters, aria-label met de hele zin'] = still ? !words.length : words.length === 51 && el.getAttribute('aria-label') === 'Niet als bureau op afstand, maar als verlengstuk van je team.';
     if (still) return done();
     var H = innerHeight, r = el.getBoundingClientRect();
     // Kop net onderin (voortgang 0): alles onzichtbaar; halverwege: een wazige gloed; ver doorgescrold: scherp, zonder inline stijl
