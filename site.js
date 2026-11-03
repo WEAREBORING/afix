@@ -1,4 +1,4 @@
-/* Afix site.js v0.27: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.28: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -291,6 +291,10 @@
       }
       function measure() {
         release();
+        // De achtergrondvorm (expertises_background) loopt door uit de sectie erboven en moet daar precies op aansluiten:
+        // dezelfde schaal als daar, dus twee keer die hoogte (de viewBox is twee keer zo hoog). De class benadert dit al.
+        var bg = sec.querySelector('.expertises_background'), prev = sec.previousElementSibling;
+        if (bg && prev) bg.style.height = 2 * prev.offsetHeight + 'px';
         var max = row.scrollWidth - row.clientWidth, first = row.firstElementChild;
         // Niet vast: met een muis is de rij te slepen (zie onder)
         row.style.cursor = window.matchMedia('(hover: hover)').matches && max > 0 ? 'grab' : '';
