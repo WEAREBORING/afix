@@ -1,4 +1,4 @@
-/* Afix site.js v0.7: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.8: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -78,7 +78,9 @@
   /* data-a-tabs (Section - Kennis): tabs zonder Tabs van Webflow. data-a-tab="<naam>" op elke tab (button, role tab),
      data-a-tab-panel="<naam>" op het bijbehorende paneel. Zonder site.js toont de class de eerste tab als actief en
      alleen het eerste paneel (:first-child); site.js neemt dat over en geeft de actieve tab de stijl van die eerste tab
-     (achtergrond, kleur, opacity: de donkere pil). Pijltjestoetsen, Home en End gaan naar een andere tab. */
+     (achtergrond, kleur, opacity: de donkere pil). Pijltjestoetsen, Home en End gaan naar een andere tab.
+     Staat er een data-a-tab-pill in de tabbalk (kennis_tab-pill, als laatste kind), dan is dat de pil: site.js schuift
+     hem met GSAP naar de gekozen tab en de tab zelf blijft doorzichtig. Het nieuwe paneel komt zacht in beeld. */
   each('[data-a-tabs]', function (wrap) {
     var tabs = [].slice.call(wrap.querySelectorAll('[data-a-tab]'));
     var panels = [].slice.call(wrap.querySelectorAll('[data-a-tab-panel]'));
@@ -88,15 +90,34 @@
     // Lezen voordat site.js iets inline zet: tabs[0] heeft de actieve stijl (:first-child), tabs[1] de gewone
     var on = look(tabs[0]), off = look(tabs[1]);
     var group = wrap.getAttribute('data-a-tabs') || 'tabs';
+    var pill = wrap.querySelector('[data-a-tab-pill]'), gsap = null, current;
+    // Met een losse pil krijgt de actieve tab geen eigen achtergrond
+    if (pill) on[0] = 'transparent';
+    function movePill(animate) {
+      if (!pill || !current) return;
+      var to = { x: current.offsetLeft, width: current.offsetWidth };
+      if (gsap && animate && !reduce.matches) gsap.to(pill, { x: to.x, width: to.width, duration: 0.45, ease: 'power3.out', overwrite: true });
+      else if (gsap) gsap.set(pill, to);
+      else { pill.style.width = to.width + 'px'; pill.style.transform = 'translateX(' + to.x + 'px)'; }
+    }
+    withGsap(function (g) { gsap = g; movePill(false); });
+    window.addEventListener('resize', function () { movePill(false); });
     function panelOf(tab) { return panels.filter(function (p) { return p.getAttribute('data-a-tab-panel') === tab.getAttribute('data-a-tab'); })[0]; }
     function select(tab, focus) {
+      var animate = !!current && tab !== current && gsap && !reduce.matches;
+      current = tab;
       tabs.forEach(function (t) {
         var active = t === tab, style = active ? on : off;
         t.setAttribute('aria-selected', active);
         t.tabIndex = active ? 0 : -1;
-        props.forEach(function (p, i) { t.style[p] = style[i]; });
+        t.style.backgroundColor = style[0];
+        // Tekstkleur en opacity lopen mee met de pil
+        if (animate) gsap.to(t, { color: style[1], opacity: style[2], duration: 0.3, ease: 'power2.out', overwrite: true });
+        else { t.style.color = style[1]; t.style.opacity = style[2]; }
       });
       panels.forEach(function (p) { p.style.display = p === panelOf(tab) ? 'block' : 'none'; });
+      if (animate && panelOf(tab)) gsap.fromTo(panelOf(tab), { opacity: 0, y: 0.5 * parseFloat(getComputedStyle(document.documentElement).fontSize) }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', overwrite: true, clearProps: 'opacity,transform' });
+      movePill(animate);
       if (focus) tab.focus();
     }
     tabs.forEach(function (t, i) {
@@ -314,6 +335,57 @@
     schedule();
     return function (d) { go(d); schedule(); };
   }
+
+  /* data-a-card (Section - Kennis): hover op een kennis-kaart, alleen desktop met muis, en bij toetsenbordfocus op de
+     kaartlink (Figma 935:8845). De kaart wordt signaalgeel (surface/accent), het gevulde label (variant Label) iets
+     donkerder (de kleur van border/subtle), de foto zoomt iets in vanaf de onderkant, en de datum (kennis-card_date)
+     maakt plaats voor de pijlknop (kennis-card_arrow). Na het teruggaan neemt de class het weer over. */
+  var kennisCards = document.querySelectorAll('[data-a-card]');
+  if (kennisCards.length) withGsap(function (gsap) {
+    var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
+    function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
+    // Een variabele als rgba-waarde, zodat GSAP ernaartoe kan tweenen
+    function colorOf(el, name) {
+      var probe = document.createElement('i');
+      probe.style.color = getComputedStyle(el).getPropertyValue(name);
+      el.appendChild(probe);
+      var c = getComputedStyle(probe).color;
+      el.removeChild(probe);
+      return c;
+    }
+    [].forEach.call(kennisCards, function (card) {
+      var img = card.querySelector('.kennis-card_image'), date = card.querySelector('.kennis-card_date'), arrow = card.querySelector('.kennis-card_arrow');
+      var labels = [].filter.call(card.querySelectorAll('.tag'), function (t) { var bg = getComputedStyle(t).backgroundColor; return bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)'; });
+      var on = false, rest;
+      function show() {
+        if (on) return;
+        on = true;
+        // Reduced motion: wel tonen, maar direct en zonder zoom of verschuiving
+        var t = reduce.matches ? 0 : 1;
+        if (!rest) rest = { card: getComputedStyle(card).backgroundColor, labels: labels.map(function (l) { return getComputedStyle(l).backgroundColor; }) };
+        gsap.to(card, { backgroundColor: colorOf(card, '--_theme---surface--accent'), duration: 0.3 * t, ease: 'power2.out', overwrite: true });
+        if (labels.length) gsap.to(labels, { backgroundColor: colorOf(card, '--_theme---border--subtle'), duration: 0.3 * t, ease: 'power2.out', overwrite: true });
+        if (img && t) gsap.to(img, { scale: 1.03, transformOrigin: '50% 100%', duration: 0.8, ease: 'expo.out', overwrite: true });
+        if (date) gsap.to(date, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
+        if (arrow) gsap.fromTo(arrow, { opacity: 0, x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+      }
+      function hide() {
+        if (!on) return;
+        on = false;
+        var t = reduce.matches ? 0 : 1;
+        function clear(el, props) { return function () { gsap.set(el, { clearProps: props }); }; }
+        gsap.to(card, { backgroundColor: rest.card, duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(card, 'backgroundColor') });
+        labels.forEach(function (l, i) { gsap.to(l, { backgroundColor: rest.labels[i], duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(l, 'backgroundColor') }); });
+        if (img) gsap.to(img, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: clear(img, 'transform,transformOrigin') });
+        if (arrow) gsap.to(arrow, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: clear(arrow, 'opacity,transform') });
+        if (date) gsap.to(date, { opacity: 1, duration: 0.3 * t, delay: 0.1 * t, ease: 'power2.out', overwrite: true, onComplete: clear(date, 'opacity') });
+      }
+      card.addEventListener('mouseenter', function () { if (desktop.matches) show(); });
+      card.addEventListener('mouseleave', hide);
+      card.addEventListener('focusin', function (e) { if (e.target.matches(':focus-visible')) show(); });
+      card.addEventListener('focusout', hide);
+    });
+  });
 
   /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het
      Webflow-CDN; houd de versie gelijk aan die van Webflow. */
