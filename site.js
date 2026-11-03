@@ -1,4 +1,4 @@
-/* Afix site.js v0.21: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.22: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -86,11 +86,17 @@
   each('[data-a-hero]', function (hero) {
     var comp = hero.querySelector('.hero-home_component') || hero;
     var h1 = hero.querySelector('h1');
+    var lines = h1 ? [].slice.call(h1.children).filter(function (el) { return el.tagName === 'SPAN'; }) : [];
+    var bar = hero.querySelector('.hero-home_cards');
+    var intro = [hero.querySelector('.hero-home_heading .tag')].concat(lines, [].slice.call(hero.querySelectorAll('.award')), [bar]).filter(Boolean);
+    // Meteen verbergen, nog zonder GSAP: laadt site.js GSAP zelf (Webflow zet hem niet altijd in de pagina), dan staat de
+    // hero anders even zichtbaar voordat de intro hem verbergt. Komt GSAP er na 3 s niet, dan zonder intro tonen.
+    var hidden = !reduce.matches;
+    if (hidden) intro.forEach(function (el) { el.style.opacity = '0'; });
+    var fallback = setTimeout(function () { hidden = false; intro.forEach(function (el) { el.style.opacity = ''; }); }, 3000);
     withGsap(function (gsap) {
+      clearTimeout(fallback);
       function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
-      var lines = h1 ? [].slice.call(h1.children).filter(function (el) { return el.tagName === 'SPAN'; }) : [];
-      var bar = hero.querySelector('.hero-home_cards');
-      var intro = [hero.querySelector('.hero-home_heading .tag')].concat(lines, [].slice.call(hero.querySelectorAll('.award')), [bar]).filter(Boolean);
       // De kopregels zijn inline spans: die schuiven met top (relatief), want een transform werkt daar niet en
       // inline-block breekt de regels anders af. De balk zelf vervaagt alleen in: een transform of filter op de balk maakt
       // hem het houvast van de foto's (absoluut), die dan bij een vroege hover op de balk staan. De kaartlinks in de balk
@@ -104,7 +110,7 @@
         var v = lines.indexOf(el) > -1 ? { top: 0, filter: 'blur(0rem)', clearProps: 'opacity,filter,position,top' } : el === bar ? { clearProps: 'opacity' } : { y: 0, filter: 'blur(0rem)', clearProps: 'opacity,transform,filter' };
         return Object.assign(v, { opacity: 1, duration: 1.1, ease: 'power3.out', delay: delay });
       }
-      if (!reduce.matches && intro.length) {
+      if (hidden && intro.length) {
         intro.concat(links).forEach(function (el) { gsap.set(el, from(el)); });
         // Wachten op de fonts (hooguit 0,8 s), anders verspringen de regels halverwege
         var started = false;
