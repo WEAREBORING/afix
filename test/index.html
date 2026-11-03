@@ -137,7 +137,7 @@
     setTimeout(function () { checks['rij schuift met GSAP'] = !!window.gsap && gsap.isTweening(row) !== matchMedia('(prefers-reduced-motion: reduce)').matches; }, 100);
     setTimeout(function () {
       checks['rij volgende kaart'] = atStart(1);
-      checks['snap terug na schuiven'] = row.style.scrollSnapType === '';
+      checks['site.js lijnt uit, niet de harde snap'] = row.style.scrollSnapType === 'none' && row.style.touchAction === 'pan-y';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
         checks['rij vorige kaart'] = atStart(0);

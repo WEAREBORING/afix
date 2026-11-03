@@ -1,4 +1,4 @@
-/* Afix site.js v0.4: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.5: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -147,9 +147,10 @@
     return function (d) { i = (i + d + items.length) % items.length; show(); };
   }
 
-  /* Scrollrij, eindeloos: een pijl schuift naar de volgende of vorige kaart (scroll-snap doet de uitlijning). Schuift
-     elke 4 seconden zelf door als de rij in beeld is, niet bij hover, focus of reduced motion. Met de muis te slepen; op
-     touch scrolt de rij zelf. Het schuiven gaat met GSAP. */
+  /* Scrollrij, eindeloos: een pijl schuift naar de volgende of vorige kaart. Schuift elke 4 seconden zelf door als de rij
+     in beeld is, niet bij hover, focus of reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
+     de vaart door en remt af op een kaart. site.js doet het uitlijnen zelf met GSAP; de scroll-snap uit de class (voor
+     zonder JS) staat uit, want die snapt hard. */
   function carouselRow(list, items) {
     var gsap = null, tween = null, dest = 0;
     withGsap(function (g) { gsap = g; });
@@ -179,28 +180,33 @@
       if (list.scrollLeft < base - 2) list.scrollLeft += set;
       else if (list.scrollLeft >= base + set - 2) list.scrollLeft -= set;
     }
-    // Schuiven met GSAP; scroll-snap staat tijdens de tween uit, anders trekt de browser de rij steeds terug
-    function scrollTo(x) {
+    list.style.scrollSnapType = 'none';
+    // Verticaal scrollen over de rij blijft bij de pagina; horizontaal slepen doet site.js
+    list.style.touchAction = 'pan-y';
+    function scrollTo(x, duration) {
       stop();
       if (!gsap || reduce.matches) { list.scrollLeft = x; normalize(); return; }
-      list.style.scrollSnapType = 'none';
       dest = x;
-      tween = gsap.to(list, { scrollLeft: x, duration: 0.6, ease: 'power3.out', onComplete: function () { stop(); normalize(); } });
+      tween = gsap.to(list, { scrollLeft: x, duration: duration || 0.6, ease: 'power3.out', onComplete: function () { stop(); normalize(); } });
     }
     function stop() {
-      if (!tween) return;
-      tween.kill();
+      if (tween) tween.kill();
       tween = null;
-      list.style.scrollSnapType = '';
     }
     function go(d) {
       // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
       var now = tween ? dest : list.scrollLeft;
       var lefts = cards.map(function (c) { return posOf(c) - now; });
-      var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0]
-        : d < 0 ? lefts.filter(function (x) { return x < -2; }).pop()
-        : lefts.reduce(function (a, b) { return Math.abs(b) < Math.abs(a) ? b : a; });
-      if (to !== undefined) scrollTo(Math.min(list.scrollWidth - list.clientWidth, Math.max(0, now + to)));
+      var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0] : lefts.filter(function (x) { return x < -2; }).pop();
+      if (to !== undefined) scrollTo(clampScroll(now + to));
+    }
+    function clampScroll(x) { return Math.min(list.scrollWidth - list.clientWidth, Math.max(0, x)); }
+    // Naar de kaart die het dichtst bij x ligt; dir 1 of -1 dwingt minstens één kaart verder dan from
+    function settleNear(x, dir, from, duration) {
+      var pos = cards.map(posOf), best = pos.reduce(function (a, b) { return Math.abs(b - x) < Math.abs(a - x) ? b : a; });
+      if (dir > 0 && best <= from + 2) best = pos.filter(function (p) { return p > from + 2; })[0];
+      if (dir < 0 && best >= from - 2) best = pos.filter(function (p) { return p < from - 2; }).pop();
+      if (best !== undefined) scrollTo(clampScroll(best), duration);
     }
     var inView = false, paused = false, timer;
     function schedule() {
@@ -212,41 +218,51 @@
     list.addEventListener('mouseleave', function () { paused = false; });
     list.addEventListener('focusin', function () { paused = true; });
     list.addEventListener('focusout', function () { paused = false; });
-    list.addEventListener('wheel', function () { stop(); schedule(); }, { passive: true });
-    // Na zelf scrollen (touch, trackpad) ook terug naar de echte set, als de rij stilstaat
+    // Trackpad: de browser scrollt vrij; staat de rij 150 ms stil, dan zacht naar de dichtstbijzijnde kaart
+    list.addEventListener('wheel', function (e) { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stop(); schedule(); }, { passive: true });
     var settle;
-    list.addEventListener('scroll', function () { clearTimeout(settle); settle = setTimeout(normalize, 150); }, { passive: true });
-    window.addEventListener('resize', normalize);
+    function later() { clearTimeout(settle); settle = setTimeout(function () { if (!tween && !drag) settleNear(list.scrollLeft); }, 150); }
+    list.addEventListener('scroll', function () { if (!tween && !drag) later(); }, { passive: true });
+    window.addEventListener('resize', later);
 
     var drag = null, dragged = false;
     list.addEventListener('pointerdown', function (e) {
       stop();
       schedule();
       dragged = false;
-      if (e.pointerType === 'mouse' && e.button === 0) drag = { x: e.clientX, left: list.scrollLeft, id: e.pointerId };
+      if (e.button !== 0) return;
+      drag = { x: e.clientX, left: list.scrollLeft, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 };
     });
     list.addEventListener('pointermove', function (e) {
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.id) return;
       var dx = e.clientX - drag.x;
       if (!dragged && Math.abs(dx) > 6) {
         dragged = true;
-        // Zonder snap tijdens het slepen, anders springt de rij steeds terug naar een kaart
-        list.style.scrollSnapType = 'none';
         list.style.userSelect = 'none';
         list.setPointerCapture(drag.id);
       }
-      if (dragged) list.scrollLeft = drag.left - dx;
-    });
-    function endDrag() {
-      if (!drag) return;
-      drag = null;
       if (!dragged) return;
-      list.style.scrollSnapType = '';
+      list.scrollLeft = drag.left - dx;
+      // Snelheid in px per ms, licht afgevlakt over de laatste bewegingen
+      var dt = e.timeStamp - drag.lastT;
+      if (dt > 0) drag.v = 0.8 * ((e.clientX - drag.lastX) / dt) + 0.2 * drag.v;
+      drag.lastX = e.clientX;
+      drag.lastT = e.timeStamp;
+    });
+    function endDrag(e) {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      // Alleen getikt: een gestopte tween mag niet tussen twee kaarten blijven staan
+      if (!dragged) return later();
       list.style.userSelect = '';
-      go(0);
+      // Stond de vinger of muis voor het loslaten al stil, dan geen vaart meer
+      var v = e && e.timeStamp - d.lastT < 80 ? d.v : 0, moved = d.x - d.lastX;
+      // Doorschieten: ongeveer waar de rij met deze vaart tot stilstand komt, daarna afremmen op een kaart
+      settleNear(list.scrollLeft - v * 280, Math.abs(moved) > 40 ? (moved > 0 ? 1 : -1) : 0, d.left, Math.min(0.9, 0.5 + Math.abs(v) * 0.15));
     }
     list.addEventListener('pointerup', endDrag);
-    list.addEventListener('pointercancel', endDrag);
+    list.addEventListener('pointercancel', function () { endDrag(null); });
     // Na slepen geen klik op de kaartlink, en geen sleepbeeld van een link of foto
     list.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
     list.addEventListener('dragstart', function (e) { e.preventDefault(); });
