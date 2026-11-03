@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>site.js test</title>
+<link rel="stylesheet" href="../site.css">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; }
+  .card { display: inline-block; padding: 1rem; border: 1px solid #ccc; }
+  #result { margin-top: 2rem; font-weight: bold; }
+</style>
+</head>
+<body>
+<p>Copyright <span data-a-year>2000</span></p>
+
+<div data-a-form-name="testformulier | Test" data-a-form-redirect="/bedankt">
+  <form data-name="Oude naam"><input name="naam"></form>
+</div>
+<div data-a-form-name="extern" data-a-form-redirect="//evil.example/x">
+  <form data-name="Oude naam"><input name="naam"></form>
+</div>
+
+<a class="card" href="#" data-a-hover>Hover mij <span data-a-hover-x="0.5rem">&rarr;</span></a>
+
+<p id="result">Bezig...</p>
+
+<script src="../site.js"></script>
+<script>
+  // Lokale controle van de modules: open dit bestand in een browser (de hover controleer je met de muis)
+  var forms = document.querySelectorAll('form');
+  var checks = {
+    jaartal: document.querySelector('[data-a-year]').textContent === String(new Date().getFullYear()),
+    formuliernaam: forms[0].getAttribute('data-name') === 'testformulier | Test',
+    redirect: forms[0].getAttribute('data-redirect') === '/bedankt',
+    'externe redirect geweigerd': !forms[1].hasAttribute('data-redirect')
+  };
+  var failed = Object.keys(checks).filter(function (k) { return !checks[k]; });
+  document.getElementById('result').textContent = failed.length ? 'MISLUKT: ' + failed.join(', ') : 'Alle ' + Object.keys(checks).length + ' controles groen';
+</script>
+</body>
+</html>

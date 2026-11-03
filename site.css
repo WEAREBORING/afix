@@ -1,0 +1,8 @@
+/* Afix site.css v0.1: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
+
+/* Rich text: geen marge boven het eerste en onder het laatste element */
+.w-richtext > :first-child { margin-top: 0; }
+.w-richtext > :last-child { margin-bottom: 0; }
+
+/* Toegankelijkheid: zichtbare focus voor toetsenbordgebruikers. Eén regel voor alle elementen; Webflow kan dit alleen per class */
+:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
