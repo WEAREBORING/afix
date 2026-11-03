@@ -1,4 +1,4 @@
-/* Afix site.js v0.8: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.9: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -80,7 +80,8 @@
      alleen het eerste paneel (:first-child); site.js neemt dat over en geeft de actieve tab de stijl van die eerste tab
      (achtergrond, kleur, opacity: de donkere pil). Pijltjestoetsen, Home en End gaan naar een andere tab.
      Staat er een data-a-tab-pill in de tabbalk (kennis_tab-pill, als laatste kind), dan is dat de pil: site.js schuift
-     hem met GSAP naar de gekozen tab en de tab zelf blijft doorzichtig. Het nieuwe paneel komt zacht in beeld. */
+     hem met GSAP naar de gekozen tab en de tab zelf blijft doorzichtig. Bij wisselen bewegen de kaarten (data-a-card)
+     mee met de pil: de oude schuiven weg, de nieuwe komen na elkaar binnen van de kant waar de pil naartoe gaat. */
   each('[data-a-tabs]', function (wrap) {
     var tabs = [].slice.call(wrap.querySelectorAll('[data-a-tab]'));
     var panels = [].slice.call(wrap.querySelectorAll('[data-a-tab-panel]'));
@@ -103,8 +104,27 @@
     withGsap(function (g) { gsap = g; movePill(false); });
     window.addEventListener('resize', function () { movePill(false); });
     function panelOf(tab) { return panels.filter(function (p) { return p.getAttribute('data-a-tab-panel') === tab.getAttribute('data-a-tab'); })[0]; }
+    function only(panel) { panels.forEach(function (p) { p.style.display = p === panel ? 'block' : 'none'; }); }
+    function cardsOf(panel) { var c = panel.querySelectorAll('[data-a-card]'); return c.length ? [].slice.call(c) : [panel]; }
+    var swap = null;
+    function showPanel(next, dir, animate) {
+      if (swap) {
+        // Snel doorklikken: de lopende wissel stoppen en alles terug naar de class
+        swap.kill();
+        swap = null;
+        gsap.set(panels.concat([].slice.call(wrap.querySelectorAll('[data-a-card]'))), { clearProps: 'opacity,transform' });
+      }
+      var prev = panels.filter(function (p) { return p.style.display !== 'none' && getComputedStyle(p).display !== 'none'; })[0];
+      if (!animate || !prev || !next || prev === next) return only(next);
+      var r = parseFloat(getComputedStyle(document.documentElement).fontSize), out = cardsOf(prev), inn = cardsOf(next);
+      swap = gsap.timeline({ onComplete: function () { swap = null; } })
+        .to(out, { opacity: 0, x: -dir * 1.5 * r, duration: 0.2, stagger: 0.03, ease: 'power2.in' })
+        .add(function () { only(next); gsap.set(out, { clearProps: 'opacity,transform' }); })
+        .fromTo(inn, { opacity: 0, x: dir * 2 * r }, { opacity: 1, x: 0, duration: 0.5, stagger: 0.08, ease: 'power3.out', clearProps: 'opacity,transform' });
+    }
     function select(tab, focus) {
       var animate = !!current && tab !== current && gsap && !reduce.matches;
+      var dir = current && tabs.indexOf(tab) < tabs.indexOf(current) ? -1 : 1;
       current = tab;
       tabs.forEach(function (t) {
         var active = t === tab, style = active ? on : off;
@@ -115,8 +135,7 @@
         if (animate) gsap.to(t, { color: style[1], opacity: style[2], duration: 0.3, ease: 'power2.out', overwrite: true });
         else { t.style.color = style[1]; t.style.opacity = style[2]; }
       });
-      panels.forEach(function (p) { p.style.display = p === panelOf(tab) ? 'block' : 'none'; });
-      if (animate && panelOf(tab)) gsap.fromTo(panelOf(tab), { opacity: 0, y: 0.5 * parseFloat(getComputedStyle(document.documentElement).fontSize) }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', overwrite: true, clearProps: 'opacity,transform' });
+      showPanel(panelOf(tab), dir, animate);
       movePill(animate);
       if (focus) tab.focus();
     }

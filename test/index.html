@@ -156,6 +156,19 @@
       }, 700);
     }, 700);
   }
+  function swapChecks(done) {
+    // Wissel met GSAP: eerst gaat het oude paneel weg, daarna komt het nieuwe; snel doorklikken eindigt netjes
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    tabs[2].click();
+    setTimeout(function () {
+      checks['tabwissel: oud paneel eerst weg'] = still ? shown(tpanels[2]) : shown(tpanels[0]) && !shown(tpanels[2]);
+      tabs[1].click(); tabs[0].click();
+      setTimeout(function () {
+        checks['tabwissel: snel klikken eindigt netjes'] = shown(tpanels[0]) && !shown(tpanels[1]) && !shown(tpanels[2]) && tpanels[0].style.opacity === '' && tpanels[0].style.transform === '';
+        done();
+      }, 1200);
+    }, 60);
+  }
   function cardChecks(done) {
     var card = $('.kcard'), desktop = matchMedia('(hover: hover) and (min-width: 992px)').matches;
     card.dispatchEvent(new MouseEvent('mouseenter'));
@@ -165,7 +178,7 @@
       card.dispatchEvent(new MouseEvent('mouseleave'));
       setTimeout(function () {
         checks['kaart-hover terug naar de class'] = card.style.backgroundColor === '' && getComputedStyle(card).backgroundColor === 'rgb(255, 255, 255)' && getComputedStyle(card.querySelector('.kennis-card_arrow')).opacity === '0' && getComputedStyle(card.querySelector('.kennis-card_date')).opacity === '1';
-        done();
+        swapChecks(done);
       }, 800);
     }, 700);
   }
