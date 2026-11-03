@@ -1,4 +1,4 @@
-/* Afix site.js v0.30: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.31: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -328,7 +328,8 @@
           next.style.zIndex = '2';
           next.style.marginTop = -(h + top) + 'px';
           next.style.borderTopLeftRadius = next.style.borderTopRightRadius = 'var(--_layout---radius--l)';
-          next.style.boxShadow = '0 -1.5rem 4rem rgba(0, 0, 0, 0.16)';
+          // Negatieve spreiding: de schaduw valt alleen boven Werk, niet onderaan op de sectie erna
+          next.style.boxShadow = '0 -1.5rem 4rem -2.5rem rgba(0, 0, 0, 0.28)';
         }
         update(true);
       }
@@ -413,6 +414,48 @@
       row.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
       row.addEventListener('dragstart', function (e) { e.preventDefault(); });
       measure();
+    });
+  });
+
+  /* data-a-fill (Section - Cultuur): de tekst kleurt letter voor letter in terwijl je scrolt, zoals het prototype. Alle
+     letters beginnen op 20% dekking en worden vol naarmate de kop door het scherm schuift: voortgang = (0,78 x schermhoogte
+     min de bovenkant van de kop) / (hoogte van de kop + 0,3 x schermhoogte). Elke letter loopt over een paar letters vloeiend
+     in; terugscrollen maakt ze weer licht. Woorden blijven heel (nowrap), dus de tekst breekt op dezelfde plekken af.
+     Schermlezers lezen de gewone tekst (aria-label op de kop, de letters zijn aria-hidden). Reduced motion en zonder
+     site.js: gewoon de tekst. */
+  each('[data-a-fill]', function (el) {
+    var text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (reduce.matches || !text) return;
+    withGsap(function (gsap) {
+      var letters = [], soft = 4, last = [];
+      el.setAttribute('aria-label', text);
+      el.textContent = '';
+      text.split(' ').forEach(function (w, i, all) {
+        var word = document.createElement('span');
+        word.style.whiteSpace = 'nowrap';
+        word.setAttribute('aria-hidden', 'true');
+        Array.from(w).forEach(function (ch) {
+          var c = document.createElement('span');
+          c.textContent = ch;
+          word.appendChild(c);
+          letters.push(c);
+        });
+        el.appendChild(word);
+        if (i < all.length - 1) el.appendChild(document.createTextNode(' '));
+      });
+      var ticking = false;
+      function update() {
+        ticking = false;
+        var r = el.getBoundingClientRect(), H = window.innerHeight;
+        var n = clamp((0.78 * H - r.top) / (r.height + 0.3 * H), 0, 1) * (letters.length + soft);
+        letters.forEach(function (c, i) {
+          var o = Math.round((0.2 + 0.8 * clamp((n - i) / soft, 0, 1)) * 100) / 100;
+          if (last[i] !== o) { last[i] = o; gsap.set(c, { opacity: o }); }
+        });
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+      window.addEventListener('resize', update);
+      update();
     });
   });
 

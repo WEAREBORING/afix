@@ -97,6 +97,9 @@
 </div></div></section>
 <section id="na-pin" style="height: 40rem">Volgende sectie</section>
 
+<h2 data-a-fill="text" id="fill" style="max-width: 20rem">Niet als bureau op afstand, maar als verlengstuk van je team.</h2>
+<div style="height: 60rem"></div>
+
 <p id="result">Bezig...</p>
 
 <script src="../site.js"></script>
@@ -257,7 +260,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['eindeloos vooruit'] = atStart(0);
-            caseChecks(function () { heroChecks(function () { pinChecks(report); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(report); }); }); });
           }, 1000);
         }, 1000);
       }, 1000);
@@ -326,6 +329,26 @@
         done();
       }, 700);
     }, 700);
+  }
+
+  function fillChecks(done) {
+    // Tekst kleurt in bij scrollen: gesplitst in woorden en letters, schermlezer leest de hele zin
+    var el = $('#fill'), letters = el.querySelectorAll('[aria-hidden] > span'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    checks['fill: tekst gesplitst, aria-label met de hele zin'] = still ? !letters.length : letters.length === 51 && el.getAttribute('aria-label') === 'Niet als bureau op afstand, maar als verlengstuk van je team.';
+    if (still) return done();
+    var H = innerHeight, r = el.getBoundingClientRect();
+    // Kop net onderin (voortgang 0): alles licht; kop ver doorgescrold (voortgang 1): alles vol
+    window.scrollTo(0, window.scrollY + r.top - 0.78 * H - 20);
+    setTimeout(function () {
+      var light = [].every.call(letters, function (c) { return getComputedStyle(c).opacity === '0.2'; });
+      r = el.getBoundingClientRect();
+      window.scrollTo(0, window.scrollY + r.top - 0.78 * H + r.height + 0.3 * H + 5);
+      setTimeout(function () {
+        checks['fill: licht voor de kop, vol erna'] = light && [].every.call(letters, function (c) { return getComputedStyle(c).opacity === '1'; });
+        window.scrollTo(0, 0);
+        setTimeout(done, 300);
+      }, 300);
+    }, 300);
   }
 
   function report() {
