@@ -1,4 +1,4 @@
-/* Afix site.js v0.19: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.20: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -168,10 +168,12 @@
         var done = clear(img, 'opacity,transform,zIndex');
         if (!t) return done();
         if (dir) {
-          gsap.to(img, { x: -dir * rem(1.25), rotation: rot - dir * 5, scale: 0.94, xPercent: 0, yPercent: 0, duration: 0.5, ease: 'power2.out', overwrite: true });
-          gsap.to(img, { opacity: 0, duration: 0.2, delay: 0.35, ease: 'power1.in', onComplete: done });
+          gsap.to(img, { x: -dir * rem(1.25), rotation: rot - dir * 5, scale: 0.94, xPercent: 0, yPercent: 0, duration: 0.6, ease: 'power3.out', overwrite: true });
+          // Begint te vervagen zodra de nieuwe foto er dekkend op ligt (0,12 s), zacht in en uit
+          gsap.to(img, { opacity: 0, duration: 0.5, delay: 0.12, ease: 'sine.inOut', onComplete: done });
         } else {
-          gsap.to(img, { x: side * rem(1.75), y: rem(0.75), xPercent: 0, yPercent: 0, scale: 0.92, rotation: rot * 0.3, opacity: 0, duration: 0.4, ease: 'power2.in', overwrite: true, onComplete: done });
+          gsap.to(img, { x: side * rem(1.75), y: rem(0.75), xPercent: 0, yPercent: 0, scale: 0.92, rotation: rot * 0.3, duration: 0.6, ease: 'power3.out', overwrite: true, onComplete: done });
+          gsap.to(img, { opacity: 0, duration: 0.45, ease: 'sine.out' });
         }
       }
       strip.addEventListener('pointermove', function (e) {
