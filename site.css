@@ -1,4 +1,4 @@
-/* Afix site.css v0.2: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
+/* Afix site.css v0.3: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
 
 /* Vloeiende root-fontgrootte: 1rem = 16px op de ontwerpbreedte en daaronder, groter op bredere schermen (tot 20px).
    1.1111vw = 16 / 1440 * 100: bij een andere ontwerpbreedte 1600 / ontwerpbreedte. */
@@ -10,3 +10,11 @@ html { font-size: clamp(1rem, 1.1111vw, 1.25rem); }
 
 /* Toegankelijkheid: zichtbare focus voor toetsenbordgebruikers. Eén regel voor alle elementen; Webflow kan dit alleen per class */
 :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* Leading trim zoals in Figma: tekst beslaat alleen hoofdletterhoogte tot basislijn, zodat paddings en gaps uit Figma kloppen.
+   Alleen tekstelementen en divs met alleen tekst, niet wrappers rond afbeeldingen. :where() houdt de specificiteit op 0, een class kan het dus terugzetten.
+   Webflow kan text-box niet als stijl opslaan; browsers zonder ondersteuning (Firefox) tonen de gewone regelhoogte. */
+:where(h1, h2, h3, h4, h5, h6, p, a, li, blockquote, figcaption, address, label, button, span, div:not(:has(*))) {
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
