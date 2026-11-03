@@ -1,4 +1,4 @@
-/* Afix site.js v0.12: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.13: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -226,12 +226,13 @@
 
   /* Stapel (Reviews, layout zoals Figma): de actieve kaart vooraan, de volgende er schuin achter (-3°, 66%) en die daarna
      nog verder (+3°, 33%), zonder tekst: de vorm van de stapel uit het ontwerp, met de echte volgende reviews. Meer
-     kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger): de voorste kaart blijft dekkend en volgt de
-     hand, de kaart eronder komt naar voren; loslaten na 10% schiet de kaart weg en hij landt elastisch achteraan (GSAP).
+     kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger), met het gevoel van de Flick Cards van Osmo:
+     tijdens het slepen schuiven alle kaarten samen tot halverwege hun volgende plek (de voorste blijft dekkend en gaat
+     een stukje opzij), bij loslaten na 10% wisselen de lagen en veert alles elastisch op zijn plek (GSAP).
      Naar links = volgende, naar rechts = vorige. De teller (data-a-carousel-count) zit in de actieve kaart en beweegt
      mee. Alleen de actieve kaart is voor schermlezers zichtbaar (aria-live). Zonder GSAP: alleen de actieve kaart. */
   function carouselStack(list, items, scope) {
-    var i = 0, n = items.length, gsap = null, busy = null;
+    var i = 0, n = items.length, gsap = null;
     var count = scope.querySelector('[data-a-carousel-count]');
     var current = scope.querySelector('[data-a-carousel-current]'), total = scope.querySelector('[data-a-carousel-total]');
     function pad(v) { return (v < 10 ? '0' : '') + v; }
@@ -280,51 +281,51 @@
       render();
     });
 
-    // Wisselen: dir 1 = volgende (kaart weg naar links), -1 = vorige (naar rechts). De oude kaart vliegt weg vanaf waar
-    // hij nu is (ook halverwege een sleep) en landt daarna elastisch op zijn nieuwe plek achter in de stapel.
-    function go(dir) {
+    // Wisselen: dir 1 = volgende, -1 = vorige. De lagen wisselen meteen en alles veert naar de nieuwe stand. Bij de pijlen
+    // stapt de oude voorkaart eerst kort opzij (naar links bij volgende), zodat je ziet dat hij achter de stapel gaat.
+    function go(dir, fromDrag) {
       var prev = i;
       i = (i + dir + n) % n;
       if (!gsap) return render();
-      if (busy) { busy.progress(1); busy = null; }
-      var old = items[prev], w = list.offsetWidth;
+      var old = items[prev];
       label();
       if (reduce.matches) return items.forEach(function (card, k) { settle(card, config(k, i), false); });
       items.forEach(function (card, k) { if (card !== old) settle(card, config(k, i), true); });
-      // De nieuwe voorste kaart blijft tijdens het wegvliegen onder de oude
-      items[i].style.zIndex = 4.5;
-      old.style.zIndex = 6;
-      busy = gsap.timeline({ onComplete: function () { busy = null; } })
-        .to(old, { x: -dir * 0.8 * w, rotation: -dir * 8, duration: 0.3, ease: 'power2.in' })
-        .add(function () { items[i].style.zIndex = 5; })
+      old.style.zIndex = config(prev, i).z;
+      content(old, 0, 0.2);
+      if (fromDrag) return settle(old, config(prev, i), true);
+      gsap.timeline()
+        .to(old, { x: -dir * 0.25 * old.offsetWidth, rotation: -dir * 4, duration: 0.18, ease: 'power2.out', overwrite: true })
         .add(function () { settle(old, config(prev, i), true); });
     }
 
-    // Slepen: de voorste kaart volgt de hand, de kaart die erna komt (eronder) loopt mee naar voren
+    // Slepen: de kaarten mengen van hun huidige naar hun volgende stand, tot halverwege bij een halve breedte (zoals Osmo).
+    // De voorste kaart schuift daarbij een stukje mee opzij en blijft dekkend; de kaart die erna komt ligt direct onder hem.
     var drag = null;
-    function candidate(d) { return items[(i + (d < 0 ? 1 : -1) + n) % n]; }
     list.addEventListener('pointerdown', function (e) {
       if (!gsap || e.button !== 0) return;
-      if (busy) { busy.progress(1); busy = null; }
-      drag = { x: e.clientX, id: e.pointerId, moved: false, dx: 0, under: null };
+      drag = { x: e.clientX, id: e.pointerId, moved: false, p: 0 };
     });
     list.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.id) return;
       var dx = e.clientX - drag.x, w = list.offsetWidth;
       if (!drag.moved && Math.abs(dx) > 6) { drag.moved = true; list.setPointerCapture(drag.id); list.style.cursor = 'grabbing'; }
       if (!drag.moved) return;
-      drag.dx = dx;
-      var front = items[i], under = dx === 0 ? drag.under : candidate(dx), t = Math.min(1, Math.abs(dx) / (w * 0.5));
-      // Van richting gewisseld: de vorige kandidaat terug naar zijn plek
-      if (drag.under && drag.under !== under) settle(drag.under, config(items.indexOf(drag.under), i), false);
-      drag.under = under;
-      gsap.set(front, { x: dx, rotation: (dx / w) * 10, overwrite: true });
-      if (under && under !== front) {
-        var c = config(items.indexOf(under), i);
-        under.style.zIndex = 4.5;
-        gsap.set(under, { rotation: c.rot * (1 - t), opacity: c.o + (1 - c.o) * t, overwrite: true });
-        if (under.children.length) gsap.set(under.children, { opacity: t, overwrite: true });
-      }
+      drag.p = Math.max(-0.5, Math.min(0.5, dx / w));
+      var t = Math.abs(drag.p), next = (i + (drag.p < 0 ? 1 : -1) + n) % n;
+      items.forEach(function (card, k) {
+        var a = config(k, i), b = config(k, next);
+        function mix(key) { return a[key] + (b[key] - a[key]) * t; }
+        if (k === i) {
+          // Voorste kaart: dekkend, gaat mee opzij tot een kwart van zijn breedte
+          gsap.set(card, { x: drag.p * 0.5 * card.offsetWidth, rotation: drag.p * 8, opacity: 1, overwrite: true });
+          card.style.zIndex = 5;
+          return;
+        }
+        gsap.set(card, { x: 0, rotation: mix('rot'), opacity: k === next ? mix('o') : a.o, overwrite: true });
+        card.style.zIndex = k === next ? 4.5 : a.z;
+        if (card.children.length) gsap.set(card.children, { opacity: k === next ? t : 0, overwrite: true });
+      });
     });
     function release() {
       if (!drag) return;
@@ -332,7 +333,7 @@
       drag = null;
       list.style.cursor = 'grab';
       if (!d.moved) return;
-      if (Math.abs(d.dx) > list.offsetWidth * 0.1) return go(d.dx < 0 ? 1 : -1);
+      if (Math.abs(d.p) > 0.1) return go(d.p < 0 ? 1 : -1, true);
       // Te kort: terugveren
       items.forEach(function (card, k) { settle(card, config(k, i), true); });
     }
