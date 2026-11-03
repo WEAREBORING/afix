@@ -1,4 +1,4 @@
-/* Afix site.js v0.3: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.4: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -147,19 +147,45 @@
     return function (d) { i = (i + d + items.length) % items.length; show(); };
   }
 
-  /* Scrollrij: een pijl schuift naar de volgende of vorige kaart (scroll-snap doet de uitlijning), aan het eind terug
-     naar het begin. Schuift elke 4 seconden zelf door als de rij in beeld is, niet bij hover, focus of reduced motion.
-     Met de muis te slepen; op touch scrolt de rij zelf. Het schuiven gaat met GSAP. */
+  /* Scrollrij, eindeloos: een pijl schuift naar de volgende of vorige kaart (scroll-snap doet de uitlijning). Schuift
+     elke 4 seconden zelf door als de rij in beeld is, niet bij hover, focus of reduced motion. Met de muis te slepen; op
+     touch scrolt de rij zelf. Het schuiven gaat met GSAP. */
   function carouselRow(list, items) {
     var gsap = null, tween = null, dest = 0;
     withGsap(function (g) { gsap = g; });
+    // Eindeloos: een kopie van alle kaarten ervoor en erna. Staat de rij na het schuiven in een kopie, dan springt hij
+    // ongemerkt een set terug. Kopieën zijn verborgen voor schermlezers en niet met Tab te bereiken, wel klikbaar.
+    // shortcut: één kopie per kant, genoeg zolang de kaarten samen breder zijn dan het scherm; anders meer kopieën maken
+    function copy() {
+      return items.map(function (it) {
+        var c = it.cloneNode(true);
+        c.setAttribute('aria-hidden', 'true');
+        c.removeAttribute('id');
+        [].forEach.call(c.querySelectorAll('[id]'), function (el) { el.removeAttribute('id'); });
+        [].forEach.call(c.querySelectorAll('a, button, input, [tabindex]'), function (el) { el.tabIndex = -1; });
+        return c;
+      });
+    }
+    var before = copy(), after = copy(), cards = before.concat(items, after);
+    before.forEach(function (c) { list.insertBefore(c, items[0]); });
+    after.forEach(function (c) { list.appendChild(c); });
+    function posOf(el) {
+      var start = list.getBoundingClientRect().left + (parseFloat(getComputedStyle(list).scrollPaddingLeft) || 0);
+      return list.scrollLeft + el.getBoundingClientRect().left - start;
+    }
+    function normalize() {
+      if (tween || drag) return;
+      var base = posOf(items[0]), set = after[0].offsetLeft - items[0].offsetLeft;
+      if (list.scrollLeft < base - 2) list.scrollLeft += set;
+      else if (list.scrollLeft >= base + set - 2) list.scrollLeft -= set;
+    }
     // Schuiven met GSAP; scroll-snap staat tijdens de tween uit, anders trekt de browser de rij steeds terug
     function scrollTo(x) {
       stop();
-      if (!gsap || reduce.matches) { list.scrollLeft = x; return; }
+      if (!gsap || reduce.matches) { list.scrollLeft = x; normalize(); return; }
       list.style.scrollSnapType = 'none';
       dest = x;
-      tween = gsap.to(list, { scrollLeft: x, duration: 0.6, ease: 'power3.out', onComplete: stop });
+      tween = gsap.to(list, { scrollLeft: x, duration: 0.6, ease: 'power3.out', onComplete: function () { stop(); normalize(); } });
     }
     function stop() {
       if (!tween) return;
@@ -170,15 +196,11 @@
     function go(d) {
       // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
       var now = tween ? dest : list.scrollLeft;
-      var start = list.getBoundingClientRect().left + (parseFloat(getComputedStyle(list).scrollPaddingLeft) || 0) + now - list.scrollLeft;
-      var lefts = items.map(function (it) { return it.getBoundingClientRect().left - start; });
-      var max = list.scrollWidth - list.clientWidth;
+      var lefts = cards.map(function (c) { return posOf(c) - now; });
       var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0]
         : d < 0 ? lefts.filter(function (x) { return x < -2; }).pop()
         : lefts.reduce(function (a, b) { return Math.abs(b) < Math.abs(a) ? b : a; });
-      if (d > 0 && (to === undefined || now >= max - 2)) scrollTo(0);
-      else if (to === undefined) scrollTo(max);
-      else scrollTo(Math.min(max, Math.max(0, now + to)));
+      if (to !== undefined) scrollTo(Math.min(list.scrollWidth - list.clientWidth, Math.max(0, now + to)));
     }
     var inView = false, paused = false, timer;
     function schedule() {
@@ -191,6 +213,10 @@
     list.addEventListener('focusin', function () { paused = true; });
     list.addEventListener('focusout', function () { paused = false; });
     list.addEventListener('wheel', function () { stop(); schedule(); }, { passive: true });
+    // Na zelf scrollen (touch, trackpad) ook terug naar de echte set, als de rij stilstaat
+    var settle;
+    list.addEventListener('scroll', function () { clearTimeout(settle); settle = setTimeout(normalize, 150); }, { passive: true });
+    window.addEventListener('resize', normalize);
 
     var drag = null, dragged = false;
     list.addEventListener('pointerdown', function (e) {
@@ -225,6 +251,7 @@
     list.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
     list.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
+    list.scrollLeft = posOf(items[0]);
     schedule();
     return function (d) { go(d); schedule(); };
   }

@@ -128,19 +128,27 @@
     }, 400);
   }
   function rowNext() {
+    var real = [].filter.call(row.children, function (c) { return !c.hasAttribute('aria-hidden'); });
+    function atStart(n) { return Math.abs(real[n].getBoundingClientRect().left - row.getBoundingClientRect().left) < 2; }
+    checks['rij: kopie ervoor en erna'] = real.length === 5 && row.children.length === 15 && row.children[0].textContent === '1' && row.children[14].textContent === '5';
+    checks['rij start op eerste echte kaart'] = atStart(0);
     $('#werk [data-a-carousel-next]').click();
     // Bij reduced motion springt de rij, zonder tween
     setTimeout(function () { checks['rij schuift met GSAP'] = !!window.gsap && gsap.isTweening(row) !== matchMedia('(prefers-reduced-motion: reduce)').matches; }, 100);
     setTimeout(function () {
-      checks['rij volgende kaart'] = Math.abs(row.scrollLeft - row.children[1].offsetLeft + row.children[0].offsetLeft) < 2;
+      checks['rij volgende kaart'] = atStart(1);
       checks['snap terug na schuiven'] = row.style.scrollSnapType === '';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
-        checks['rij vorige kaart'] = row.scrollLeft < 2;
+        checks['rij vorige kaart'] = atStart(0);
         $('#werk [data-a-carousel-prev]').click();
         setTimeout(function () {
-          checks['rij begin naar eind'] = row.scrollLeft >= row.scrollWidth - row.clientWidth - 2;
-          report();
+          checks['eindeloos achteruit'] = atStart(4);
+          $('#werk [data-a-carousel-next]').click();
+          setTimeout(function () {
+            checks['eindeloos vooruit'] = atStart(0);
+            report();
+          }, 1000);
         }, 1000);
       }, 1000);
     }, 1000);
