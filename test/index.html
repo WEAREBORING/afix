@@ -156,6 +156,20 @@
       }, 700);
     }, 700);
   }
+  function fanChecks(done) {
+    // Waaier (GSAP geladen): actieve kaart recht in het midden, buren schuin; pijl wisselt met de veer
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    sNext.click();
+    setTimeout(function () {
+      var at = [].findIndex.call(cards, function (c) { return !c.hasAttribute('aria-hidden'); });
+      var g = function (c, p) { return Math.round(gsap.getProperty(c, p)); };
+      var prev = cards[(at + 2) % 3], next = cards[(at + 1) % 3];
+      checks['waaier: actieve kaart recht'] = g(cards[at], 'rotation') === 0 && g(cards[at], 'xPercent') === 0 && getComputedStyle(cards[at]).opacity === '1';
+      checks['waaier: buren schuin ernaast'] = g(next, 'rotation') === 10 && g(next, 'xPercent') === 25 && g(prev, 'rotation') === -10 && visible(next) && next.getAttribute('aria-hidden') === 'true';
+      checks['waaier: teller loopt mee'] = $('[data-a-carousel-current]').textContent === String(at + 1).padStart(2, '0');
+      done();
+    }, still ? 50 : 900);
+  }
   function centerChecks(done) {
     // Smalle tabbalk (zoals op de telefoon): de actieve tab schuift naar het midden
     var bar = $('[role="tablist"]');
@@ -166,7 +180,7 @@
       checks['smalle tabbalk: actieve tab in het midden'] = Math.abs((t.left + t.width / 2) - (b.left + b.width / 2)) < 2;
       bar.style.display = bar.style.maxWidth = bar.style.overflowX = '';
       tabs[0].click();
-      setTimeout(done, 800);
+      setTimeout(function () { fanChecks(done); }, 800);
     }, 700);
   }
   function swapChecks(done) {

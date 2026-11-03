@@ -1,4 +1,4 @@
-/* Afix site.js v0.10: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.11: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -171,7 +171,7 @@
   /* data-a-carousel (Section - Werk en Section - Reviews): op de lijst; de kaarten zijn de kinderen. De knoppen
      data-a-carousel-prev en -next (Element - Pijlknoppen) en de teller (data-a-carousel-current en -total) zoekt site.js
      in dezelfde section. Een lijst die zijwaarts scrolt (overflow in de class, zoals werk_list) is een scrollrij; een
-     lijst die niet scrolt is een stapel (reviews_list, alle kaarten in één gridcel). */
+     lijst die niet scrolt is een stapel (reviews_list, alle kaarten in één gridcel), die site.js als waaier toont. */
   each('[data-a-carousel]', function (list) {
     var scope = list.closest('section') || list.parentNode;
     var items = [].slice.call(list.children);
@@ -224,20 +224,86 @@
     });
   });
 
-  /* Stapel: alleen de voorste kaart is zichtbaar (in de class alleen :first-child); de pijlen wisselen hem en de teller
-     toont "01" en " / 03". aria-live laat een schermlezer de nieuwe kaart voorlezen. */
+  /* Stapel als waaier (Reviews, naar de Flick Cards van Osmo): de actieve kaart staat recht in het midden, de buren schuin
+     ernaast en erachter, verder weg nog schuiner en kleiner, daarna onzichtbaar. Pijlen of slepen (muis en vinger) wisselen
+     de kaart; de kaarten veren elastisch op hun plek (GSAP). De teller toont "01" en " / 03". Alleen de actieve kaart is
+     voor schermlezers zichtbaar (aria-live leest hem voor). Zonder GSAP: alleen de actieve kaart, zonder waaier. */
   function carouselStack(list, items, scope) {
-    var i = 0, current = scope.querySelector('[data-a-carousel-current]'), total = scope.querySelector('[data-a-carousel-total]');
-    function pad(n) { return (n < 10 ? '0' : '') + n; }
-    function show() {
-      items.forEach(function (it, k) { it.style.opacity = k === i ? '1' : '0'; it.style.visibility = k === i ? 'visible' : 'hidden'; });
-      if (current) current.textContent = pad(i + 1);
-      if (total) total.textContent = ' / ' + pad(items.length);
+    var i = 0, n = items.length, gsap = null;
+    var current = scope.querySelector('[data-a-carousel-current]'), total = scope.querySelector('[data-a-carousel-total]');
+    function pad(v) { return (v < 10 ? '0' : '') + v; }
+    // Stand per afstand tot de actieve kaart: x en y in % van de kaart, draaiing, schaal, opacity, laag. De buren zijn half
+    // doorzichtig: alle kaarten zijn even donker, dus zo blijft de actieve kaart duidelijk vooraan
+    function config(k, at) {
+      var d = k - at;
+      if (d > n / 2) d -= n; else if (d < -n / 2) d += n;
+      var a = Math.abs(d), dir = d < 0 ? -1 : 1;
+      if (a === 0) return { x: 0, y: 0, rot: 0, s: 1, o: 1, z: 5 };
+      if (a === 1) return { x: 25 * dir, y: 1, rot: 10 * dir, s: 0.9, o: 0.6, z: 4 };
+      if (a === 2) return { x: 45 * dir, y: 5, rot: 15 * dir, s: 0.8, o: 0.35, z: 3 };
+      return { x: 55 * dir, y: 5, rot: 20 * dir, s: 0.6, o: 0, z: 2 };
     }
-    show();
+    function apply(card, c, animate) {
+      var vars = { xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.s, opacity: c.o };
+      if (animate) gsap.to(card, Object.assign(vars, { duration: 0.6, ease: 'elastic.out(1.2, 1)', overwrite: true }));
+      else gsap.set(card, vars);
+    }
+    function render(animate) {
+      if (current) current.textContent = pad(i + 1);
+      if (total) total.textContent = ' / ' + pad(n);
+      items.forEach(function (card, k) {
+        var c = config(k, i), active = k === i;
+        if (active) card.removeAttribute('aria-hidden'); else card.setAttribute('aria-hidden', 'true');
+        if (!gsap) { card.style.opacity = active ? '1' : '0'; card.style.visibility = active ? 'visible' : 'hidden'; return; }
+        card.style.visibility = 'visible';
+        card.style.zIndex = c.z;
+        apply(card, c, animate && !reduce.matches);
+      });
+    }
+    // Eigen laag, zodat de z-index van de kaarten niet boven de teller uitkomt
+    list.style.isolation = 'isolate';
     list.setAttribute('aria-live', 'polite');
-    return function (d) { i = (i + d + items.length) % items.length; show(); };
+    render(false);
+    withGsap(function (g) { gsap = g; render(false); });
+
+    // Slepen: de kaarten lopen mee van de huidige naar de volgende stand; na 10% van de breedte loslaten = wisselen
+    var drag = null;
+    list.style.touchAction = 'pan-y';
+    list.addEventListener('pointerdown', function (e) {
+      if (!gsap || e.button !== 0) return;
+      drag = { x: e.clientX, id: e.pointerId, moved: false, p: 0 };
+    });
+    list.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x, w = list.offsetWidth;
+      if (!drag.moved && Math.abs(dx) > 6) { drag.moved = true; list.setPointerCapture(drag.id); list.style.userSelect = 'none'; }
+      if (!drag.moved) return;
+      drag.p = Math.max(-0.5, Math.min(0.5, dx / w));
+      var next = (i + (drag.p > 0 ? -1 : 1) + n) % n, t = Math.min(1, Math.abs(drag.p) * 2);
+      items.forEach(function (card, k) {
+        var a = config(k, i), b = config(k, next);
+        function mix(key) { return a[key] + (b[key] - a[key]) * t; }
+        gsap.set(card, { xPercent: mix('x'), yPercent: mix('y'), rotation: mix('rot'), scale: mix('s'), opacity: mix('o'), overwrite: true });
+        // Halverwege komt de binnenkomende kaart bovenop
+        card.style.zIndex = t > 0.5 ? b.z : a.z;
+      });
+    });
+    function release() {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      if (!d.moved) return;
+      list.style.userSelect = '';
+      if (d.p > 0.1) i = (i - 1 + n) % n; else if (d.p < -0.1) i = (i + 1) % n;
+      render(true);
+    }
+    list.addEventListener('pointerup', release);
+    list.addEventListener('pointercancel', release);
+    list.addEventListener('dragstart', function (e) { e.preventDefault(); });
+
+    return function (d) { i = (i + d + n) % n; render(true); };
   }
+
 
   /* Scrollrij, eindeloos: een pijl schuift naar de volgende of vorige kaart. Schuift elke 4 seconden zelf door als de rij
      in beeld is, niet bij hover, focus of reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
