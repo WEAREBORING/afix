@@ -1,4 +1,4 @@
-/* Afix site.js v0.14: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.15: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -225,8 +225,8 @@
   });
 
   /* Stapel (Reviews), als de Flick Cards van Osmo maar krapper: de actieve kaart recht vooraan, de volgende rechts en de
-     vorige links er schuin achter (9% opzij, 4°, 66%), daarna nog een paar verder (16%, 7°, 33%), zonder tekst zoals de
-     achterkaarten in Figma; meer kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger): tijdens het
+     vorige links er schuin achter (9% opzij, 4°), daarna nog een paar verder (16%, 7°), zonder tekst zoals de
+     achterkaarten in Figma en in een effen, lichtere tint (de kaartkleur voor 66% en 33% gemengd met de sectie); meer kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger): tijdens het
      slepen schuiven alle kaarten samen tot halverwege hun volgende plek (de voorste blijft dekkend en gaat mee opzij),
      bij loslaten na 10% wisselen de lagen en veert alles elastisch op zijn plek (GSAP).
      Naar links = volgende, naar rechts = vorige. De teller (data-a-carousel-count) zit in de actieve kaart en beweegt
@@ -236,8 +236,13 @@
     var count = scope.querySelector('[data-a-carousel-count]');
     var current = scope.querySelector('[data-a-carousel-current]'), total = scope.querySelector('[data-a-carousel-total]');
     function pad(v) { return (v < 10 ? '0' : '') + v; }
-    // Stand per afstand tot de actieve kaart (rechts = volgende): x en y in % van de kaart, draaiing, schaal, dekking van de
-    // kaart en van de inhoud, laag
+    // Effen tint voor de achterkaarten: de kaartkleur (uit de class) gemengd met de achtergrond van de sectie
+    function rgb(c) { return (c.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); }
+    var dark = rgb(getComputedStyle(items[0]).backgroundColor), page = rgb(getComputedStyle(scope).backgroundColor);
+    function shade(o) { return 'rgb(' + dark.map(function (v, j) { return Math.round(page[j] + (v - page[j]) * o); }).join(', ') + ')'; }
+    function vis(c) { return c.o > 0 ? 1 : 0; }
+    // Stand per afstand tot de actieve kaart (rechts = volgende): x en y in % van de kaart, draaiing, schaal, tint (1 = de
+    // kaartkleur, 0 = onzichtbaar), dekking van de inhoud, laag
     function config(k, at) {
       var d = k - at;
       if (d > n / 2) d -= n; else if (d < -n / 2) d += n;
@@ -250,9 +255,11 @@
     function content(card, c, d) { if (card.children.length) gsap.to(card.children, { opacity: c, duration: d, ease: 'power2.out', overwrite: true }); }
     function settle(card, c, animate) {
       card.style.zIndex = c.z;
-      var vars = { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc, opacity: c.o };
+      var vars = { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc, opacity: vis(c) };
       if (animate) gsap.to(card, Object.assign(vars, { duration: 0.6, ease: 'elastic.out(1.2, 1)', overwrite: true }));
       else gsap.set(card, vars);
+      // De kleur apart en zonder veer, anders schiet hij voorbij de tint
+      if (c.o > 0) gsap.to(card, { backgroundColor: shade(c.o), duration: animate ? 0.35 : 0, ease: 'power2.out' });
       content(card, c.c, animate ? 0.3 : 0);
     }
     function label() {
@@ -300,8 +307,8 @@
         card.style.zIndex = c.z;
         gsap.timeline()
           .to(card, { opacity: 0, duration: 0.15, ease: 'power1.in', overwrite: true })
-          .set(card, { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc })
-          .to(card, { opacity: c.o, duration: 0.35, ease: 'power2.out' });
+          .set(card, { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc, backgroundColor: shade(c.o || 0.33) })
+          .to(card, { opacity: vis(c), duration: 0.35, ease: 'power2.out' });
         content(card, 0, 0);
       });
     }
@@ -325,8 +332,8 @@
         function mix(key) { return a[key] + (b[key] - a[key]) * t; }
         var front = k === i, coming = k === next;
         // Kaart die naar de andere kant moet: blijft staan en fadet uit
-        if (wraps(a, b)) return gsap.set(card, { opacity: a.o * (1 - 2 * t), overwrite: true });
-        gsap.set(card, { x: front ? drag.p * 0.3 * card.offsetWidth : 0, xPercent: mix('x'), yPercent: mix('y'), rotation: mix('rot'), scale: mix('sc'), opacity: front ? 1 : mix('o'), overwrite: true });
+        if (wraps(a, b)) return gsap.set(card, { opacity: vis(a) * (1 - 2 * t), overwrite: true });
+        gsap.set(card, { x: front ? drag.p * 0.3 * card.offsetWidth : 0, xPercent: mix('x'), yPercent: mix('y'), rotation: mix('rot'), scale: mix('sc'), opacity: front ? 1 : vis(a) + (vis(b) - vis(a)) * t, backgroundColor: shade(front ? 1 : Math.max(mix('o'), 0.33)), overwrite: true });
         card.style.zIndex = front ? 5 : coming ? 4.5 : a.z;
         if (!front && card.children.length) gsap.set(card.children, { opacity: coming ? t : 0, overwrite: true });
       });
