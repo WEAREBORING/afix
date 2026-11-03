@@ -1,4 +1,4 @@
-/* Afix site.js v0.23: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.24: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -239,9 +239,11 @@
     });
   });
 
-  /* data-a-pin (Section - Expertises): op desktop (vanaf 992px, niet bij reduced motion) blijft de inhoud van de sectie
-     (het eerste kind, padding-global) staan terwijl de scrollrij erin (expertises_list) met de scroll zijwaarts schuift:
-     0,72 px opzij per px scrollen, zoals het prototype. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
+  /* data-a-pin (Section - Expertises): op desktop (vanaf 992px, niet bij reduced motion) rijden de kaarten van de
+     scrollrij (expertises_list) als één trein met de scroll mee, 0,72 px opzij per px scrollen, zoals het prototype: ze
+     komen van rechts buiten beeld binnen terwijl de sectie omhoog schuift (een x-verschuiving van de rij), en rijden door
+     terwijl de inhoud van de sectie (het eerste kind, padding-global) vaststaat (de scroll van de rij), tot de laatste
+     kaart in beeld is, plus een korte pauze. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
      (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend). site.js zet
      daarvoor de hoogte van de sectie en de negatieve marge van Werk inline. Onder 992px en zonder site.js blijft het een
      gewone veegrij. Tab naar een kaart buiten beeld scrolt de pagina naar de plek waar die kaart in beeld staat. */
@@ -258,17 +260,23 @@
         stick.style.position = stick.style.top = '';
         row.style.overflowX = row.style.scrollSnapType = '';
         if (next) ['position', 'zIndex', 'marginTop', 'borderTopLeftRadius', 'borderTopRightRadius', 'boxShadow'].forEach(function (p) { next.style[p] = ''; });
-        gsap.killTweensOf(row);
+        gsap.killTweensOf(train);
+        gsap.set(row, { clearProps: 'transform' });
+        row.scrollLeft = 0;
         gsap.set(inner, { clearProps: 'transform,opacity' });
       }
       function measure() {
         release();
-        var max = row.scrollWidth - row.clientWidth;
-        if (!desktop.matches || reduce.matches || max <= 0) return;
+        var max = row.scrollWidth - row.clientWidth, first = row.firstElementChild;
+        if (!desktop.matches || reduce.matches || max <= 0 || !first) return;
         var H = window.innerHeight, h = stick.offsetHeight;
         // Midden in beeld; is de inhoud hoger dan het scherm, dan staat de onderkant (de rij) in beeld
-        var top = h < H ? (H - h) / 2 : H - h, dist = max / speed;
-        m = { top: top, dist: dist, H: H, max: max };
+        var top = h < H ? (H - h) / 2 : H - h;
+        // Start: de eerste kaart net rechts buiten beeld. De trein rijdt vanaf het moment dat de sectie onderin binnenkomt;
+        // vast staat hij tot de laatste kaart binnen is, plus een pauze van een vijfde scherm (minstens 0,6 scherm)
+        var offset = document.documentElement.clientWidth - first.getBoundingClientRect().left;
+        var travel = offset + max, dist = Math.max(0.6 * H, travel / speed - (H - top) + 0.2 * H);
+        m = { top: top, dist: dist, H: H, max: max, offset: offset, travel: travel };
         sec.style.height = (h + dist + H) + 'px';
         stick.style.position = 'sticky';
         stick.style.top = top + 'px';
@@ -285,13 +293,20 @@
         }
         update(true);
       }
+      // Hoe ver de trein gereden is (px opzij): eerst schuift de hele rij van rechts binnen, daarna scrolt de rij zelf
+      var train = { d: 0 };
+      function place() {
+        if (!m) return;
+        gsap.set(row, { x: Math.max(0, m.offset - train.d) });
+        row.scrollLeft = Math.max(0, train.d - m.offset);
+      }
       function update(instant) {
         if (!m) return;
-        var s = m.top - sec.getBoundingClientRect().top;
-        var x = clamp(s / m.dist, 0, 1) * m.max;
-        if (instant) { gsap.killTweensOf(row); row.scrollLeft = x; }
+        var secTop = sec.getBoundingClientRect().top, s = m.top - secTop;
+        var d = clamp((m.H - secTop) * speed, 0, m.travel);
+        if (instant) { gsap.killTweensOf(train); train.d = d; place(); }
         // Licht nalopen maakt het schuiven met een muiswiel zachter
-        else gsap.to(row, { scrollLeft: x, duration: 0.5, ease: 'power3.out', overwrite: true });
+        else gsap.to(train, { d: d, duration: 0.5, ease: 'power3.out', overwrite: true, onUpdate: place });
         var o = clamp((s - m.dist) / m.H, 0, 1), e = o < 0.5 ? 2 * o * o : 1 - Math.pow(-2 * o + 2, 2) / 2;
         gsap.set(inner, { y: -0.16 * m.H * e, scale: 1 - 0.05 * e, opacity: 1 - 0.8 * e, transformOrigin: '50% 40%' });
       }
@@ -304,7 +319,7 @@
         if (!m) return;
         var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
         var x = clamp(r.left - rr.left + row.scrollLeft - (parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0), 0, m.max);
-        window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - m.top + x / m.max * m.dist);
+        window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - m.H + (m.offset + x) / speed);
         update(true);
       });
       measure();

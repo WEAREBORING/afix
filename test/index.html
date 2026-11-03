@@ -298,12 +298,19 @@
     var set = !!sec.style.height && sec.firstElementChild.style.position === 'sticky' && parseFloat(next.style.marginTop) < 0;
     checks['pin: vast op desktop, gewone rij op telefoon'] = pinned ? set : !set && !sec.style.height && !next.style.marginTop;
     if (!pinned) return expertiseChecks(done);
-    var max = row.scrollWidth - row.clientWidth, top = parseFloat(sec.firstElementChild.style.top);
-    window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - top + max / 0.72 / 2);
+    var top = parseFloat(sec.firstElementChild.style.top), H = innerHeight;
+    function to(secTop) { window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - secTop); }
+    // De sectie komt onderin binnen: de kaarten staan nog rechts buiten beeld
+    to(H);
     setTimeout(function () {
-      checks['pin: rij halverwege bij halve scroll'] = Math.abs(row.scrollLeft - max / 2) < 3;
-      window.scrollTo(0, 0);
-      setTimeout(function () { expertiseChecks(done); }, 300);
+      checks['pin: kaarten starten rechts buiten beeld'] = row.firstElementChild.getBoundingClientRect().left >= document.documentElement.clientWidth - 2 && row.scrollLeft === 0;
+      // Eind van het vaststaan: de rij is helemaal doorgeschoven
+      to(top - (parseFloat(sec.style.height) - sec.firstElementChild.offsetHeight - H));
+      setTimeout(function () {
+        checks['pin: rij aan het eind helemaal doorgeschoven'] = Math.abs(row.scrollLeft - (row.scrollWidth - row.clientWidth)) < 3 && Math.abs(gsap.getProperty(row, 'x')) < 1;
+        window.scrollTo(0, 0);
+        setTimeout(function () { expertiseChecks(done); }, 300);
+      }, 900);
     }, 900);
   }
   function expertiseChecks(done) {
