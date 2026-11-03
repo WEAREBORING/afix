@@ -29,6 +29,10 @@
   .case { --_theme---surface--accent: #f9ca00; display: inline-block; }
   .case-card_logo-view { background: rgb(255, 255, 255); padding: 1rem; }
   .case-card_tags, .case-card_text { opacity: 0; }
+  .pinrow { display: flex; gap: 1rem; overflow: auto hidden; width: 30rem; }
+  .pinrow > div { flex: none; width: 20rem; height: 6rem; }
+  .expertise-card_link { display: block; padding: 1rem; background: rgb(255, 255, 255); --_theme---surface--accent: #f9ca00; }
+  .expertise-card_arrow { opacity: 0; }
   .hero-home_cards { --_theme---surface--accent: #f9ca00; --_theme---action--contrast: #273327; display: flex; width: 40rem; background: #273327; }
   .hero-card { flex: 1 1 0; color: #fff; }
   .hero-card_link { display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; padding: 1.5rem; height: 8rem; color: inherit; }
@@ -84,6 +88,14 @@
     <div data-a-challenge="item" class="hero-card"><a href="#" class="hero-card_link"><div class="hero-card_number">02</div><div class="hero-card_title">Twee</div><div class="hero-card_detail"><p class="hero-card_text">Tekst</p></div></a><div class="hero-card_image-left"></div><div class="hero-card_image-right"></div></div>
   </div>
 </div></section>
+
+<section data-a-pin="expertises"><div><div>
+  <div class="pinrow">
+    <div data-a-expertise="item"><a href="#" class="expertise-card_link">Strategie <span class="expertise-card_arrow">&rarr;</span></a></div>
+    <div data-a-expertise="item"><a href="#" class="expertise-card_link">Websites <span class="expertise-card_arrow">&rarr;</span></a></div>
+  </div>
+</div></div></section>
+<section id="na-pin" style="height: 40rem">Volgende sectie</section>
 
 <p id="result">Bezig...</p>
 
@@ -245,7 +257,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['eindeloos vooruit'] = atStart(0);
-            caseChecks(function () { heroChecks(report); });
+            caseChecks(function () { heroChecks(function () { pinChecks(report); }); });
           }, 1000);
         }, 1000);
       }, 1000);
@@ -277,6 +289,36 @@
         done();
       }, 900);
     }
+  }
+
+  function pinChecks(done) {
+    // Vastzetten (alleen vanaf 992px en zonder reduced motion): de rij schuift met de scroll en de volgende sectie schuift erover
+    var sec = $('[data-a-pin]'), row = $('.pinrow'), next = $('#na-pin');
+    var pinned = matchMedia('(min-width: 992px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var set = !!sec.style.height && sec.firstElementChild.style.position === 'sticky' && parseFloat(next.style.marginTop) < 0;
+    checks['pin: vast op desktop, gewone rij op telefoon'] = pinned ? set : !set && !sec.style.height && !next.style.marginTop;
+    if (!pinned) return expertiseChecks(done);
+    var max = row.scrollWidth - row.clientWidth, top = parseFloat(sec.firstElementChild.style.top);
+    window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - top + max / 0.72 / 2);
+    setTimeout(function () {
+      checks['pin: rij halverwege bij halve scroll'] = Math.abs(row.scrollLeft - max / 2) < 3;
+      window.scrollTo(0, 0);
+      setTimeout(function () { expertiseChecks(done); }, 300);
+    }, 900);
+  }
+  function expertiseChecks(done) {
+    var card = $('[data-a-expertise]'), link = card.querySelector('.expertise-card_link'), arrow = card.querySelector('.expertise-card_arrow');
+    var desktop = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+    card.dispatchEvent(new MouseEvent('mouseenter'));
+    setTimeout(function () {
+      var shown = getComputedStyle(link).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(arrow).opacity === '1';
+      checks['expertise-hover: geel en pijl in beeld'] = desktop ? shown : !shown;
+      card.dispatchEvent(new MouseEvent('mouseleave'));
+      setTimeout(function () {
+        checks['expertise-hover terug naar de class'] = !link.getAttribute('style') && getComputedStyle(arrow).opacity === '0';
+        done();
+      }, 700);
+    }, 700);
   }
 
   function report() {

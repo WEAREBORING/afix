@@ -1,4 +1,4 @@
-/* Afix site.js v0.22: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.23: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -77,7 +77,7 @@
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component, traag beginnend, over de hoogte van de hero; de achtergrond blijft. Hover of toetsenbordfocus op
+     hero-home_component, traag beginnend, over iets meer dan de helft van de hero; de achtergrond blijft. Hover of toetsenbordfocus op
      een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
      tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
      en de twee foto's van die kaart komen van opzij binnen, kantelen naar hun stand uit de class en lopen licht mee met de
@@ -129,8 +129,8 @@
       function fade() {
         ticking = false;
         if (reduce.matches) return gsap.set(comp, { clearProps: 'opacity' });
-        // Over de hele hoogte van de hero, en traag beginnend: de eerste meters blijft hij bijna helemaal staan
-        var p = clamp((top0 - hero.getBoundingClientRect().top) / hero.offsetHeight, 0, 1);
+        // Klaar na iets meer dan de helft van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
+        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.55 * hero.offsetHeight), 0, 1);
         gsap.set(comp, { opacity: 1 - p * p });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
@@ -236,6 +236,111 @@
       strip.addEventListener('pointerleave', function () { set(null); });
       strip.addEventListener('focusout', function (e) { if (!strip.contains(e.relatedTarget)) set(null); });
       desktop.addEventListener('change', function () { set(null); });
+    });
+  });
+
+  /* data-a-pin (Section - Expertises): op desktop (vanaf 992px, niet bij reduced motion) blijft de inhoud van de sectie
+     (het eerste kind, padding-global) staan terwijl de scrollrij erin (expertises_list) met de scroll zijwaarts schuift:
+     0,72 px opzij per px scrollen, zoals het prototype. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
+     (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend). site.js zet
+     daarvoor de hoogte van de sectie en de negatieve marge van Werk inline. Onder 992px en zonder site.js blijft het een
+     gewone veegrij. Tab naar een kaart buiten beeld scrolt de pagina naar de plek waar die kaart in beeld staat. */
+  each('[data-a-pin]', function (sec) {
+    var stick = sec.firstElementChild, inner = stick && stick.firstElementChild, next = sec.nextElementSibling;
+    var row = [].filter.call(sec.querySelectorAll('*'), function (el) { return /auto|scroll/.test(getComputedStyle(el).overflowX); })[0];
+    if (!stick || !inner || !row) return;
+    var desktop = window.matchMedia('(min-width: 992px)');
+    var speed = 0.72, m = null;
+    withGsap(function (gsap) {
+      function release() {
+        m = null;
+        sec.style.height = '';
+        stick.style.position = stick.style.top = '';
+        row.style.overflowX = row.style.scrollSnapType = '';
+        if (next) ['position', 'zIndex', 'marginTop', 'borderTopLeftRadius', 'borderTopRightRadius', 'boxShadow'].forEach(function (p) { next.style[p] = ''; });
+        gsap.killTweensOf(row);
+        gsap.set(inner, { clearProps: 'transform,opacity' });
+      }
+      function measure() {
+        release();
+        var max = row.scrollWidth - row.clientWidth;
+        if (!desktop.matches || reduce.matches || max <= 0) return;
+        var H = window.innerHeight, h = stick.offsetHeight;
+        // Midden in beeld; is de inhoud hoger dan het scherm, dan staat de onderkant (de rij) in beeld
+        var top = h < H ? (H - h) / 2 : H - h, dist = max / speed;
+        m = { top: top, dist: dist, H: H, max: max };
+        sec.style.height = (h + dist + H) + 'px';
+        stick.style.position = 'sticky';
+        stick.style.top = top + 'px';
+        // De rij volgt alleen de scroll: geen eigen scroll of snap meer
+        row.style.overflowX = 'hidden';
+        row.style.scrollSnapType = 'none';
+        if (next) {
+          // Werk komt onderin binnen precies als de rij klaar is, en bedekt de inhoud als die loskomt
+          next.style.position = 'relative';
+          next.style.zIndex = '2';
+          next.style.marginTop = -(h + top) + 'px';
+          next.style.borderTopLeftRadius = next.style.borderTopRightRadius = 'var(--_layout---radius--l)';
+          next.style.boxShadow = '0 -1.5rem 4rem rgba(0, 0, 0, 0.16)';
+        }
+        update(true);
+      }
+      function update(instant) {
+        if (!m) return;
+        var s = m.top - sec.getBoundingClientRect().top;
+        var x = clamp(s / m.dist, 0, 1) * m.max;
+        if (instant) { gsap.killTweensOf(row); row.scrollLeft = x; }
+        // Licht nalopen maakt het schuiven met een muiswiel zachter
+        else gsap.to(row, { scrollLeft: x, duration: 0.5, ease: 'power3.out', overwrite: true });
+        var o = clamp((s - m.dist) / m.H, 0, 1), e = o < 0.5 ? 2 * o * o : 1 - Math.pow(-2 * o + 2, 2) / 2;
+        gsap.set(inner, { y: -0.16 * m.H * e, scale: 1 - 0.05 * e, opacity: 1 - 0.8 * e, transformOrigin: '50% 40%' });
+      }
+      var ticking = false, timer;
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; update(false); }); } }, { passive: true });
+      window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(measure, 150); });
+      window.addEventListener('load', measure);
+      desktop.addEventListener('change', measure);
+      row.addEventListener('focusin', function (e) {
+        if (!m) return;
+        var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
+        var x = clamp(r.left - rr.left + row.scrollLeft - (parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0), 0, m.max);
+        window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - m.top + x / m.max * m.dist);
+        update(true);
+      });
+      measure();
+    });
+  });
+
+  /* data-a-expertise (Item - Expertise): hover op een expertisekaart, alleen desktop met muis, en bij toetsenbordfocus
+     op de kaartlink. expertise-card_link wordt signaalgeel (surface/accent) en de pijl (expertise-card_arrow, op desktop
+     onzichtbaar in de class) schuift in beeld. Labels en tekst blijven staan, zoals in Figma. */
+  var expertiseCards = document.querySelectorAll('[data-a-expertise]');
+  if (expertiseCards.length) withGsap(function (gsap) {
+    var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
+    function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
+    [].forEach.call(expertiseCards, function (card) {
+      var link = card.querySelector('.expertise-card_link'), arrow = card.querySelector('.expertise-card_arrow');
+      if (!link) return;
+      var on = false, rest;
+      function show() {
+        if (on) return;
+        on = true;
+        var t = reduce.matches ? 0 : 1;
+        rest = rest || getComputedStyle(link).backgroundColor;
+        gsap.to(link, { backgroundColor: getComputedStyle(link).getPropertyValue('--_theme---surface--accent'), duration: 0.35 * t, ease: 'power2.out', overwrite: true });
+        if (arrow) gsap.fromTo(arrow, { opacity: 0, x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power3.out', overwrite: true });
+      }
+      function hide() {
+        if (!on) return;
+        on = false;
+        var t = reduce.matches ? 0 : 1;
+        gsap.to(link, { backgroundColor: rest, duration: 0.35 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(link, { clearProps: 'backgroundColor' }); } });
+        if (arrow) gsap.to(arrow, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(arrow, { clearProps: 'opacity,transform' }); } });
+      }
+      card.addEventListener('mouseenter', function () { if (desktop.matches) show(); });
+      card.addEventListener('mouseleave', hide);
+      card.addEventListener('focusin', function (e) { if (e.target.matches(':focus-visible')) show(); });
+      card.addEventListener('focusout', hide);
     });
   });
 
