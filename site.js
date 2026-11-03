@@ -1,4 +1,4 @@
-/* Afix site.js v0.28: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.29: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -98,7 +98,8 @@
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component, traag beginnend, over iets meer dan de helft van de hero; de achtergrond blijft. Hover of toetsenbordfocus op
+     hero-home_component, traag beginnend, over iets meer dan de helft van de hero, samen met de achtergrondvorm
+     (hero-home_background en het vervolg ervan in Expertises, expertises_background). Hover of toetsenbordfocus op
      een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
      tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
      en de twee foto's van die kaart komen van opzij binnen, kantelen naar hun stand uit de class en lopen licht mee met de
@@ -145,14 +146,16 @@
         setTimeout(start, 800);
       }
 
-      // Vervagen bij wegscrollen
-      var top0 = Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false;
+      // Vervagen bij wegscrollen: de inhoud en de achtergrondvorm, ook het deel dat doorloopt in de volgende sectie
+      // (expertises_background), want dat is dezelfde vorm
+      var fading = [comp].concat([].slice.call(document.querySelectorAll('.hero-home_background, .expertises_background')));
+      var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false;
       function fade() {
         ticking = false;
-        if (reduce.matches) return gsap.set(comp, { clearProps: 'opacity' });
+        if (reduce.matches) return gsap.set(fading, { clearProps: 'opacity' });
         // Klaar na iets meer dan de helft van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
         var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.55 * hero.offsetHeight), 0, 1);
-        gsap.set(comp, { opacity: 1 - p * p });
+        gsap.set(fading, { opacity: 1 - p * p });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
       fade();
@@ -291,10 +294,12 @@
       }
       function measure() {
         release();
-        // De achtergrondvorm (expertises_background) loopt door uit de sectie erboven en moet daar precies op aansluiten:
-        // dezelfde schaal als daar, dus twee keer die hoogte (de viewBox is twee keer zo hoog). De class benadert dit al.
+        // De achtergrondvorm (expertises_background) loopt door uit de hero erboven. Beide svg's schalen als slice met een
+        // viewBox van 1440 breed (hero 705 hoog, onderaan verankerd; hier 1410 hoog, bovenaan verankerd). Met dezelfde schaal
+        // als de hero en een vak van 1410 keer die schaal sluit de vorm op elk formaat aan en loopt hij tot zijn einde door.
+        // De class benadert dit al (twee keer de herohoogte).
         var bg = sec.querySelector('.expertises_background'), prev = sec.previousElementSibling;
-        if (bg && prev) bg.style.height = 2 * prev.offsetHeight + 'px';
+        if (bg && prev) bg.style.height = 1410 * Math.max(prev.offsetWidth / 1440, prev.offsetHeight / 705) + 'px';
         var max = row.scrollWidth - row.clientWidth, first = row.firstElementChild;
         // Niet vast: met een muis is de rij te slepen (zie onder)
         row.style.cursor = window.matchMedia('(hover: hover)').matches && max > 0 ? 'grab' : '';
