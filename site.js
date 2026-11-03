@@ -1,4 +1,4 @@
-/* Afix site.js v0.25: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.26: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -260,20 +260,22 @@
     });
   });
 
-  /* data-a-pin (Section - Expertises): op desktop (vanaf 992px, niet bij reduced motion) rijden de kaarten van de
+  /* data-a-pin (Section - Expertises): op elke breedte (niet bij reduced motion) rijden de kaarten van de
      scrollrij (expertises_list) als één trein met de scroll mee, 0,72 px opzij per px scrollen, zoals het prototype: ze
      komen van rechts buiten beeld binnen terwijl de sectie omhoog schuift (een x-verschuiving van de rij), en rijden door
      terwijl de inhoud van de sectie (het eerste kind, padding-global) vaststaat (de scroll van de rij), tot de laatste
      kaart in beeld is, plus een korte pauze. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
      (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend). site.js zet
-     daarvoor de hoogte van de sectie en de negatieve marge van Werk inline. Onder 992px en zonder site.js blijft het een
-     gewone veegrij. Tab naar een kaart buiten beeld scrolt de pagina naar de plek waar die kaart in beeld staat. */
+     daarvoor de hoogte van de sectie en de negatieve marge van Werk inline. Bij reduced motion en zonder site.js blijft
+     het een gewone veegrij (met de muis te slepen). Tab naar een kaart buiten beeld scrolt de pagina naar de plek waar die
+     kaart in beeld staat. Op een telefoon wordt alleen opnieuw gemeten als de breedte verandert: de adresbalk die in- en
+     uitschuift verandert de hoogte, en dan zou de sectie tijdens het scrollen verspringen. */
   each('[data-a-pin]', function (sec) {
     var stick = sec.firstElementChild, inner = stick && stick.firstElementChild, next = sec.nextElementSibling;
     var row = [].filter.call(sec.querySelectorAll('*'), function (el) { return /auto|scroll/.test(getComputedStyle(el).overflowX); })[0];
     if (!stick || !inner || !row) return;
-    var desktop = window.matchMedia('(min-width: 992px)');
-    var speed = 0.72, m = null;
+    var touch = window.matchMedia('(hover: none)');
+    var speed = 0.72, m = null, width = 0;
     withGsap(function (gsap) {
       function release() {
         m = null;
@@ -289,7 +291,11 @@
       function measure() {
         release();
         var max = row.scrollWidth - row.clientWidth, first = row.firstElementChild;
-        if (!desktop.matches || reduce.matches || max <= 0 || !first) return;
+        // Niet vast: met een muis is de rij te slepen (zie onder)
+        row.style.cursor = window.matchMedia('(hover: hover)').matches && max > 0 ? 'grab' : '';
+        width = window.innerWidth;
+        if (reduce.matches || max <= 0 || !first) return;
+        row.style.cursor = '';
         var H = window.innerHeight, h = stick.offsetHeight;
         // Midden in beeld; is de inhoud hoger dan het scherm, dan staat de onderkant (de rij) in beeld
         var top = h < H ? (H - h) / 2 : H - h;
@@ -333,9 +339,12 @@
       }
       var ticking = false, timer;
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; update(false); }); } }, { passive: true });
-      window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(measure, 150); });
+      window.addEventListener('resize', function () {
+        if (touch.matches && window.innerWidth === width) return;
+        clearTimeout(timer);
+        timer = setTimeout(measure, 150);
+      });
       window.addEventListener('load', measure);
-      desktop.addEventListener('change', measure);
       row.addEventListener('focusin', function (e) {
         if (!m) return;
         var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
@@ -343,6 +352,54 @@
         jumpTo(window.scrollY + sec.getBoundingClientRect().top - m.H + (m.offset + x) / speed);
         update(true);
       });
+
+      // Niet vast (smal venster): de rij met de muis slepen, zoals Werk; bij loslaten schiet hij met de vaart door en remt
+      // af op de dichtstbijzijnde kaart. Vinger en trackpad scrollen de rij zelf, met de snap uit de class.
+      var drag = null, dragged = false;
+      function snapPoints() {
+        var pad = parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0, left = row.getBoundingClientRect().left;
+        return [].map.call(row.children, function (c) { return clamp(row.scrollLeft + c.getBoundingClientRect().left - left - pad, 0, row.scrollWidth - row.clientWidth); });
+      }
+      row.addEventListener('pointerdown', function (e) {
+        dragged = false;
+        if (m || e.pointerType !== 'mouse' || e.button !== 0) return;
+        gsap.killTweensOf(row);
+        drag = { x: e.clientX, left: row.scrollLeft, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 };
+      });
+      row.addEventListener('pointermove', function (e) {
+        if (!drag || e.pointerId !== drag.id) return;
+        var dx = e.clientX - drag.x;
+        if (!dragged && Math.abs(dx) > 6) {
+          dragged = true;
+          row.setPointerCapture(drag.id);
+          // Zonder snap tijdens het slepen, anders trekt de browser de rij steeds terug naar een kaart
+          row.style.scrollSnapType = 'none';
+          row.style.userSelect = 'none';
+          row.style.cursor = 'grabbing';
+        }
+        if (!dragged) return;
+        row.scrollLeft = drag.left - dx;
+        var dt = e.timeStamp - drag.lastT;
+        if (dt > 0) drag.v = 0.8 * ((e.clientX - drag.lastX) / dt) + 0.2 * drag.v;
+        drag.lastX = e.clientX;
+        drag.lastT = e.timeStamp;
+      });
+      function endDrag(e) {
+        if (!drag) return;
+        var d = drag;
+        drag = null;
+        if (!dragged) return;
+        row.style.userSelect = '';
+        row.style.cursor = 'grab';
+        var aim = row.scrollLeft - (e && e.timeStamp - d.lastT < 80 ? d.v : 0) * 280;
+        var best = snapPoints().reduce(function (a, b) { return Math.abs(b - aim) < Math.abs(a - aim) ? b : a; });
+        gsap.to(row, { scrollLeft: best, duration: reduce.matches ? 0 : 0.6, ease: 'power3.out', overwrite: true, onComplete: function () { row.style.scrollSnapType = ''; } });
+      }
+      row.addEventListener('pointerup', endDrag);
+      row.addEventListener('pointercancel', function () { endDrag(null); });
+      // Na slepen geen klik op de kaartlink, en geen sleepbeeld van een link
+      row.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
+      row.addEventListener('dragstart', function (e) { e.preventDefault(); });
       measure();
     });
   });

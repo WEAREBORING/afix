@@ -292,11 +292,11 @@
   }
 
   function pinChecks(done) {
-    // Vastzetten (alleen vanaf 992px en zonder reduced motion): de rij schuift met de scroll en de volgende sectie schuift erover
+    // Vastzetten (op elke breedte, niet bij reduced motion): de rij schuift met de scroll en de volgende sectie schuift erover
     var sec = $('[data-a-pin]'), row = $('.pinrow'), next = $('#na-pin');
-    var pinned = matchMedia('(min-width: 992px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var pinned = !matchMedia('(prefers-reduced-motion: reduce)').matches;
     var set = !!sec.style.height && sec.firstElementChild.style.position === 'sticky' && parseFloat(next.style.marginTop) < 0;
-    checks['pin: vast op desktop, gewone rij op telefoon'] = pinned ? set : !set && !sec.style.height && !next.style.marginTop;
+    checks['pin: vast, gewone rij bij reduced motion'] = pinned ? set : !set && !sec.style.height && !next.style.marginTop;
     if (!pinned) return expertiseChecks(done);
     var top = parseFloat(sec.firstElementChild.style.top), H = innerHeight;
     function to(secTop) { window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - secTop); }
