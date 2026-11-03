@@ -1,4 +1,4 @@
-/* Afix site.js v0.18: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.19: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -89,20 +89,30 @@
     withGsap(function (gsap) {
       function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
       var lines = h1 ? [].slice.call(h1.children).filter(function (el) { return el.tagName === 'SPAN'; }) : [];
-      var intro = [hero.querySelector('.hero-home_heading .tag')].concat(lines, [].slice.call(hero.querySelectorAll('.award')), [hero.querySelector('.hero-home_cards')]).filter(Boolean);
+      var bar = hero.querySelector('.hero-home_cards');
+      var intro = [hero.querySelector('.hero-home_heading .tag')].concat(lines, [].slice.call(hero.querySelectorAll('.award')), [bar]).filter(Boolean);
       // De kopregels zijn inline spans: die schuiven met top (relatief), want een transform werkt daar niet en
-      // inline-block breekt de regels anders af
-      function inline(el) { return lines.indexOf(el) > -1; }
+      // inline-block breekt de regels anders af. De balk zelf vervaagt alleen in: een transform of filter op de balk maakt
+      // hem het houvast van de foto's (absoluut), die dan bij een vroege hover op de balk staan. De kaartlinks in de balk
+      // bewegen wel mee, kort na elkaar.
+      var links = bar ? [].slice.call(bar.querySelectorAll('.hero-card_link')) : [];
+      function from(el) {
+        if (lines.indexOf(el) > -1) return { opacity: 0, position: 'relative', top: rem(1.5), filter: 'blur(0.75rem)' };
+        return el === bar ? { opacity: 0 } : { opacity: 0, y: rem(1.5), filter: 'blur(0.75rem)' };
+      }
+      function to(el, delay) {
+        var v = lines.indexOf(el) > -1 ? { top: 0, filter: 'blur(0rem)', clearProps: 'opacity,filter,position,top' } : el === bar ? { clearProps: 'opacity' } : { y: 0, filter: 'blur(0rem)', clearProps: 'opacity,transform,filter' };
+        return Object.assign(v, { opacity: 1, duration: 1.1, ease: 'power3.out', delay: delay });
+      }
       if (!reduce.matches && intro.length) {
-        intro.forEach(function (el) { gsap.set(el, inline(el) ? { opacity: 0, position: 'relative', top: rem(1.5), filter: 'blur(0.75rem)' } : { opacity: 0, y: rem(1.5), filter: 'blur(0.75rem)' }); });
+        intro.concat(links).forEach(function (el) { gsap.set(el, from(el)); });
         // Wachten op de fonts (hooguit 0,8 s), anders verspringen de regels halverwege
         var started = false;
         var start = function () {
           if (started) return;
           started = true;
-          intro.forEach(function (el, i) {
-            gsap.to(el, Object.assign(inline(el) ? { top: 0, clearProps: 'opacity,filter,position,top' } : { y: 0, clearProps: 'opacity,transform,filter' }, { opacity: 1, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', delay: 0.1 + i * 0.09 }));
-          });
+          intro.forEach(function (el, i) { gsap.to(el, to(el, 0.1 + i * 0.09)); });
+          links.forEach(function (el, k) { gsap.to(el, to(el, 0.1 + (intro.length - 1) * 0.09 + k * 0.04)); });
         };
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
         setTimeout(start, 800);
