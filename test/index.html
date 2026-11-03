@@ -20,6 +20,9 @@
   .stack { display: grid; }
   .stack > div { grid-area: 1 / 1; opacity: 0; visibility: hidden; }
   .stack > div:first-child { opacity: 1; visibility: visible; }
+  .case { --_theme---surface--accent: #f9ca00; display: inline-block; }
+  .case-card_logo-view { background: rgb(255, 255, 255); padding: 1rem; }
+  .case-card_tags, .case-card_text { opacity: 0; }
 </style>
 </head>
 <body>
@@ -56,6 +59,8 @@
   <div data-a-carousel="reviews" class="stack"><div>Review 1</div><div>Review 2</div><div>Review 3</div></div>
   <div data-a-carousel-count><span data-a-carousel-current>01</span><span data-a-carousel-total> / 09</span></div>
 </section>
+
+<div data-a-case class="case"><div class="case-card_logo-view"><div class="case-card_tags">Label</div>Logo<p class="case-card_text">Omschrijving</p></div></div>
 
 <p id="result">Bezig...</p>
 
@@ -127,6 +132,21 @@
       rowNext();
     }, 400);
   }
+  function caseChecks(done) {
+    // Hover op een case (alleen desktop met muis: in een smal venster telt hij als niet van toepassing)
+    var item = $('.case'), view = item.querySelector('.case-card_logo-view');
+    var desktop = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+    item.dispatchEvent(new MouseEvent('mouseenter'));
+    setTimeout(function () {
+      var shown = getComputedStyle(view).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(item.querySelector('.case-card_text')).opacity === '1';
+      checks['case-hover kleurt en toont tekst'] = desktop ? shown : !shown;
+      item.dispatchEvent(new MouseEvent('mouseleave'));
+      setTimeout(function () {
+        checks['case-hover terug naar de class'] = getComputedStyle(view).backgroundColor === 'rgb(255, 255, 255)' && view.style.backgroundColor === '' && getComputedStyle(item.querySelector('.case-card_text')).opacity === '0';
+        done();
+      }, 700);
+    }, 700);
+  }
   function rowNext() {
     var real = [].filter.call(row.children, function (c) { return !c.hasAttribute('aria-hidden'); });
     function atStart(n) { return Math.abs(real[n].getBoundingClientRect().left - row.getBoundingClientRect().left) < 2; }
@@ -147,7 +167,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['eindeloos vooruit'] = atStart(0);
-            report();
+            caseChecks(report);
           }, 1000);
         }, 1000);
       }, 1000);

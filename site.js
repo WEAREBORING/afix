@@ -1,4 +1,4 @@
-/* Afix site.js v0.6: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.7: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -130,6 +130,48 @@
     var prev = scope.querySelector('[data-a-carousel-prev]'), next = scope.querySelector('[data-a-carousel-next]');
     if (prev) prev.addEventListener('click', function () { go(-1); });
     if (next) next.addEventListener('click', function () { go(1); });
+  });
+
+  /* data-a-case (Section - Werk): hover op een case, alleen desktop met muis, en bij toetsenbordfocus op de kaartlink.
+     Logokaart: case-card_logo-view wordt signaalgeel (variabele surface/accent), case-card_tags komen van boven en
+     case-card_text van onder in beeld. Uitgelichte case (met case-card_feature-view): de foto zoomt iets in. Staat na
+     data-a-carousel, zodat de kopieën van de eindeloze rij ook meedoen. Na het teruggaan neemt de class het weer over. */
+  var cases = document.querySelectorAll('[data-a-case]');
+  if (cases.length) withGsap(function (gsap) {
+    var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
+    function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
+    [].forEach.call(cases, function (item) {
+      var photo = item.querySelector('.case-card_feature-view .case-card_photo');
+      var view = item.querySelector('.case-card_logo-view'), bits = item.querySelectorAll('.case-card_tags, .case-card_text');
+      var tags = item.querySelector('.case-card_tags'), text = item.querySelector('.case-card_text');
+      var on = false, rest;
+      function show() {
+        if (on) return;
+        on = true;
+        // Reduced motion: wel tonen (de tekst hoort erbij), maar direct en zonder te bewegen of te zoomen
+        var t = reduce.matches ? 0 : 1;
+        if (photo) return t && gsap.to(photo, { scale: 1.03, duration: 0.8, ease: 'expo.out', overwrite: true });
+        if (!view) return;
+        // Ruststand uit de class onthouden, zodat het terugkeren klopt
+        rest = rest || getComputedStyle(view).backgroundColor;
+        gsap.to(view, { backgroundColor: getComputedStyle(view).getPropertyValue('--_theme---surface--accent'), duration: 0.35 * t, ease: 'power2.out', overwrite: true });
+        if (tags) gsap.fromTo(tags, { opacity: 0, y: -rem(0.375) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+        if (text) gsap.fromTo(text, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+      }
+      function hide() {
+        if (!on) return;
+        on = false;
+        var t = reduce.matches ? 0 : 1;
+        if (photo) return gsap.to(photo, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: function () { gsap.set(photo, { clearProps: 'transform' }); } });
+        if (!view) return;
+        gsap.to(view, { backgroundColor: rest, duration: 0.35 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(view, { clearProps: 'backgroundColor' }); } });
+        gsap.to(bits, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(bits, { clearProps: 'opacity,transform' }); } });
+      }
+      item.addEventListener('mouseenter', function () { if (desktop.matches) show(); });
+      item.addEventListener('mouseleave', hide);
+      item.addEventListener('focusin', function (e) { if (e.target.matches(':focus-visible')) show(); });
+      item.addEventListener('focusout', hide);
+    });
   });
 
   /* Stapel: alleen de voorste kaart is zichtbaar (in de class alleen :first-child); de pijlen wisselen hem en de teller
