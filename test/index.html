@@ -157,15 +157,15 @@
     }, 700);
   }
   function fanChecks(done) {
-    // Stapel zoals Figma (GSAP geladen): actieve kaart recht, de volgende -3° op 66%, die daarna +3° op 33%; teller in de kaart
+    // Stapel (GSAP geladen): actieve kaart recht, de volgende rechts en de vorige links schuin erachter op 66%; teller in de kaart
     var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     sNext.click();
     setTimeout(function () {
       var at = [].findIndex.call(cards, function (c) { return !c.hasAttribute('aria-hidden'); });
       var g = function (c, p) { return Math.round(gsap.getProperty(c, p) * 100) / 100; };
-      var next = cards[(at + 1) % 3], after = cards[(at + 2) % 3];
+      var next = cards[(at + 1) % 3], before = cards[(at + 2) % 3];
       checks['stapel: actieve kaart recht en dekkend'] = g(cards[at], 'rotation') === 0 && g(cards[at], 'x') === 0 && getComputedStyle(cards[at]).opacity === '1';
-      checks['stapel: volgende kaarten schuin erachter'] = g(next, 'rotation') === -3 && g(next, 'opacity') === 0.66 && g(after, 'rotation') === 3 && g(after, 'opacity') === 0.33 && next.getAttribute('aria-hidden') === 'true';
+      checks['stapel: buren schuin aan de zijkanten'] = g(next, 'xPercent') === 9 && g(next, 'rotation') === 4 && g(next, 'opacity') === 0.66 && g(before, 'xPercent') === -9 && g(before, 'rotation') === -4 && next.getAttribute('aria-hidden') === 'true';
       checks['stapel: teller in de actieve kaart'] = cards[at].contains($('[data-a-carousel-count]')) && $('[data-a-carousel-current]').textContent === String(at + 1).padStart(2, '0');
       checks['stapel: grab-cursor'] = getComputedStyle(cards[at]).cursor === 'grab';
       done();

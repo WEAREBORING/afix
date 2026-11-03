@@ -1,4 +1,4 @@
-/* Afix site.js v0.13: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.14: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -224,11 +224,11 @@
     });
   });
 
-  /* Stapel (Reviews, layout zoals Figma): de actieve kaart vooraan, de volgende er schuin achter (-3°, 66%) en die daarna
-     nog verder (+3°, 33%), zonder tekst: de vorm van de stapel uit het ontwerp, met de echte volgende reviews. Meer
-     kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger), met het gevoel van de Flick Cards van Osmo:
-     tijdens het slepen schuiven alle kaarten samen tot halverwege hun volgende plek (de voorste blijft dekkend en gaat
-     een stukje opzij), bij loslaten na 10% wisselen de lagen en veert alles elastisch op zijn plek (GSAP).
+  /* Stapel (Reviews), als de Flick Cards van Osmo maar krapper: de actieve kaart recht vooraan, de volgende rechts en de
+     vorige links er schuin achter (9% opzij, 4°, 66%), daarna nog een paar verder (16%, 7°, 33%), zonder tekst zoals de
+     achterkaarten in Figma; meer kaarten liggen onzichtbaar achteraan. Pijlen of slepen (muis en vinger): tijdens het
+     slepen schuiven alle kaarten samen tot halverwege hun volgende plek (de voorste blijft dekkend en gaat mee opzij),
+     bij loslaten na 10% wisselen de lagen en veert alles elastisch op zijn plek (GSAP).
      Naar links = volgende, naar rechts = vorige. De teller (data-a-carousel-count) zit in de actieve kaart en beweegt
      mee. Alleen de actieve kaart is voor schermlezers zichtbaar (aria-live). Zonder GSAP: alleen de actieve kaart. */
   function carouselStack(list, items, scope) {
@@ -236,18 +236,21 @@
     var count = scope.querySelector('[data-a-carousel-count]');
     var current = scope.querySelector('[data-a-carousel-current]'), total = scope.querySelector('[data-a-carousel-total]');
     function pad(v) { return (v < 10 ? '0' : '') + v; }
-    // Stand per plek in de stapel (0 = vooraan): draaiing, dekking van de kaart, dekking van de inhoud, laag
+    // Stand per afstand tot de actieve kaart (rechts = volgende): x en y in % van de kaart, draaiing, schaal, dekking van de
+    // kaart en van de inhoud, laag
     function config(k, at) {
-      var f = (k - at + n) % n;
-      if (f === 0) return { rot: 0, o: 1, c: 1, z: 5 };
-      if (f === 1) return { rot: -3, o: 0.66, c: 0, z: 4 };
-      if (f === 2) return { rot: 3, o: 0.33, c: 0, z: 3 };
-      return { rot: 0, o: 0, c: 0, z: 2 };
+      var d = k - at;
+      if (d > n / 2) d -= n; else if (d < -n / 2) d += n;
+      var a = Math.abs(d), s = d < 0 ? -1 : 1;
+      if (a === 0) return { x: 0, y: 0, rot: 0, sc: 1, o: 1, c: 1, z: 5 };
+      if (a === 1) return { x: 9 * s, y: 1.5, rot: 4 * s, sc: 0.94, o: 0.66, c: 0, z: 4 };
+      if (a === 2) return { x: 16 * s, y: 3, rot: 7 * s, sc: 0.88, o: 0.33, c: 0, z: 3 };
+      return { x: 20 * s, y: 3, rot: 9 * s, sc: 0.82, o: 0, c: 0, z: 2 };
     }
     function content(card, c, d) { if (card.children.length) gsap.to(card.children, { opacity: c, duration: d, ease: 'power2.out', overwrite: true }); }
     function settle(card, c, animate) {
       card.style.zIndex = c.z;
-      var vars = { x: 0, rotation: c.rot, opacity: c.o };
+      var vars = { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc, opacity: c.o };
       if (animate) gsap.to(card, Object.assign(vars, { duration: 0.6, ease: 'elastic.out(1.2, 1)', overwrite: true }));
       else gsap.set(card, vars);
       content(card, c.c, animate ? 0.3 : 0);
@@ -281,26 +284,30 @@
       render();
     });
 
-    // Wisselen: dir 1 = volgende, -1 = vorige. De lagen wisselen meteen en alles veert naar de nieuwe stand. Bij de pijlen
-    // stapt de oude voorkaart eerst kort opzij (naar links bij volgende), zodat je ziet dat hij achter de stapel gaat.
-    function go(dir, fromDrag) {
+    // Wisselen: dir 1 = volgende, -1 = vorige. De lagen wisselen meteen en alles veert elastisch naar de nieuwe stand: de
+    // oude voorkaart schuift naar zijn plek opzij achter de nieuwe.
+    // Een kaart die van de ene naar de andere kant moet (achteraan de stapel), schuift niet achter de stapel langs maar
+    // fadet uit en aan de andere kant weer in.
+    function wraps(a, b) { return a.x * b.x < 0; }
+    function go(dir) {
       var prev = i;
       i = (i + dir + n) % n;
       if (!gsap) return render();
-      var old = items[prev];
       label();
-      if (reduce.matches) return items.forEach(function (card, k) { settle(card, config(k, i), false); });
-      items.forEach(function (card, k) { if (card !== old) settle(card, config(k, i), true); });
-      old.style.zIndex = config(prev, i).z;
-      content(old, 0, 0.2);
-      if (fromDrag) return settle(old, config(prev, i), true);
-      gsap.timeline()
-        .to(old, { x: -dir * 0.25 * old.offsetWidth, rotation: -dir * 4, duration: 0.18, ease: 'power2.out', overwrite: true })
-        .add(function () { settle(old, config(prev, i), true); });
+      items.forEach(function (card, k) {
+        var c = config(k, i);
+        if (reduce.matches || !wraps(config(k, prev), c)) return settle(card, c, !reduce.matches);
+        card.style.zIndex = c.z;
+        gsap.timeline()
+          .to(card, { opacity: 0, duration: 0.15, ease: 'power1.in', overwrite: true })
+          .set(card, { x: 0, xPercent: c.x, yPercent: c.y, rotation: c.rot, scale: c.sc })
+          .to(card, { opacity: c.o, duration: 0.35, ease: 'power2.out' });
+        content(card, 0, 0);
+      });
     }
 
     // Slepen: de kaarten mengen van hun huidige naar hun volgende stand, tot halverwege bij een halve breedte (zoals Osmo).
-    // De voorste kaart schuift daarbij een stukje mee opzij en blijft dekkend; de kaart die erna komt ligt direct onder hem.
+    // De voorste kaart blijft dekkend en gaat iets verder mee met de hand; de kaart die erna komt ligt direct onder hem.
     var drag = null;
     list.addEventListener('pointerdown', function (e) {
       if (!gsap || e.button !== 0) return;
@@ -316,15 +323,12 @@
       items.forEach(function (card, k) {
         var a = config(k, i), b = config(k, next);
         function mix(key) { return a[key] + (b[key] - a[key]) * t; }
-        if (k === i) {
-          // Voorste kaart: dekkend, gaat mee opzij tot een kwart van zijn breedte
-          gsap.set(card, { x: drag.p * 0.5 * card.offsetWidth, rotation: drag.p * 8, opacity: 1, overwrite: true });
-          card.style.zIndex = 5;
-          return;
-        }
-        gsap.set(card, { x: 0, rotation: mix('rot'), opacity: k === next ? mix('o') : a.o, overwrite: true });
-        card.style.zIndex = k === next ? 4.5 : a.z;
-        if (card.children.length) gsap.set(card.children, { opacity: k === next ? t : 0, overwrite: true });
+        var front = k === i, coming = k === next;
+        // Kaart die naar de andere kant moet: blijft staan en fadet uit
+        if (wraps(a, b)) return gsap.set(card, { opacity: a.o * (1 - 2 * t), overwrite: true });
+        gsap.set(card, { x: front ? drag.p * 0.3 * card.offsetWidth : 0, xPercent: mix('x'), yPercent: mix('y'), rotation: mix('rot'), scale: mix('sc'), opacity: front ? 1 : mix('o'), overwrite: true });
+        card.style.zIndex = front ? 5 : coming ? 4.5 : a.z;
+        if (!front && card.children.length) gsap.set(card.children, { opacity: coming ? t : 0, overwrite: true });
       });
     });
     function release() {
@@ -333,7 +337,7 @@
       drag = null;
       list.style.cursor = 'grab';
       if (!d.moved) return;
-      if (Math.abs(d.p) > 0.1) return go(d.p < 0 ? 1 : -1, true);
+      if (Math.abs(d.p) > 0.1) return go(d.p < 0 ? 1 : -1);
       // Te kort: terugveren
       items.forEach(function (card, k) { settle(card, config(k, i), true); });
     }
