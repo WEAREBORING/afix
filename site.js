@@ -1,4 +1,4 @@
-/* Afix site.js v0.16: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.17: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -77,10 +77,11 @@
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component over driekwart schermhoogte; de achtergrond blijft. Hover of toetsenbordfocus op een uitdaging
-     (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met tekst in
-     action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld, en de twee
-     foto's van die kaart komen van opzij binnen en kantelen naar hun stand uit de class. De andere titels dimmen.
+     hero-home_component, traag beginnend, over de hoogte van de hero; de achtergrond blijft. Hover of toetsenbordfocus op
+     een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
+     tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
+     en de twee foto's van die kaart komen van opzij binnen, kantelen naar hun stand uit de class en lopen licht mee met de
+     muis. De andere titels dimmen. Titels en tekst krijgen meteen hun eindbreedte, zodat ze niet herschikken.
      Reduced motion: geen intro en geen vervagen; de hover toont direct, zonder te bewegen. */
   each('[data-a-hero]', function (hero) {
     var comp = hero.querySelector('.hero-home_component') || hero;
@@ -112,8 +113,9 @@
       function fade() {
         ticking = false;
         if (reduce.matches) return gsap.set(comp, { clearProps: 'opacity' });
-        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.75 * window.innerHeight), 0, 1);
-        gsap.set(comp, { opacity: 1 - (1 - Math.pow(1 - p, 3)) });
+        // Over de hele hoogte van de hero, en traag beginnend: de eerste meters blijft hij bijna helemaal staan
+        var p = clamp((top0 - hero.getBoundingClientRect().top) / hero.offsetHeight, 0, 1);
+        gsap.set(comp, { opacity: 1 - p * p });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
       fade();
@@ -135,16 +137,42 @@
         return p;
       });
       function clear(el, props) { return function () { if (el) gsap.set(el, { clearProps: props }); }; }
+      // Foto's: binnen van opzij en van onder, eerst tegen de kant in gekanteld, en met een lange uitloop naar hun stand;
+      // weg naar het midden, kleiner en rechter. Tijdens de hover lopen ze licht mee met de muis (xPercent en yPercent,
+      // los van de x en y van het binnenkomen).
       function photo(img, on, side, rot, t) {
         if (!img) return;
-        if (on) gsap.fromTo(img, { opacity: 0, x: side * rem(2.25) * t, scale: t ? 0.92 : 1, rotation: t ? 0 : rot }, { opacity: 1, x: 0, scale: 1, rotation: rot, duration: 0.5 * t, delay: side < 0 ? 0.06 * t : 0, ease: 'power3.out', overwrite: true });
-        else if (gsap.getProperty(img, 'opacity') > 0) gsap.to(img, { opacity: 0, duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(img, 'opacity,transform') });
+        if (on) {
+          gsap.fromTo(img, { x: side * rem(3.5) * t, y: rem(1.5) * t, scale: t ? 0.84 : 1, rotation: t ? -rot : rot }, { x: 0, y: 0, scale: 1, rotation: rot, duration: 0.9 * t, delay: side < 0 ? 0.07 * t : 0, ease: 'expo.out', overwrite: 'auto' });
+          gsap.fromTo(img, { opacity: 0 }, { opacity: 1, duration: 0.35 * t, delay: side < 0 ? 0.07 * t : 0, ease: 'power1.out', overwrite: 'auto' });
+        } else if (gsap.getProperty(img, 'opacity') > 0) {
+          gsap.to(img, { x: side * rem(1.75) * t, y: rem(0.75) * t, xPercent: 0, yPercent: 0, scale: t ? 0.92 : 1, rotation: rot * 0.3, opacity: 0, duration: 0.4 * t, ease: 'power2.in', overwrite: 'auto', onComplete: clear(img, 'opacity,transform') });
+        }
+      }
+      strip.addEventListener('pointermove', function (e) {
+        if (!active || reduce.matches) return;
+        var r = strip.getBoundingClientRect(), nx = clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1);
+        var p = parts.filter(function (q) { return q.card === active; })[0];
+        [p.left, p.right].forEach(function (img, k) { if (img) gsap.to(img, { xPercent: nx * 6, yPercent: (k ? 1 : -1) * nx * 3, duration: 0.9, ease: 'power3.out', overwrite: 'auto' }); });
+      });
+      // De breedte die titel en tekst krijgen als de kaarten klaar zijn met groeien. Die zetten we meteen vast, zodat de
+      // tekst niet steeds opnieuw afbreekt terwijl de kaart groeit of krimpt; de link knipt af wat er nog niet in past.
+      function finalWidths(card) {
+        var now = parts.map(function (p) { return p.card.style.flexGrow; });
+        parts.forEach(function (p) { p.card.style.flexGrow = p.card === card ? 1.72 : 1; if (p.title) p.title.style.width = ''; });
+        var w = parts.map(function (p) { var cs = getComputedStyle(p.link); return p.link.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); });
+        parts.forEach(function (p, k) { p.card.style.flexGrow = now[k]; });
+        return w;
       }
       function set(card) {
         if (card === active) return;
         active = card;
         var t = reduce.matches ? 0 : 1;
-        parts.forEach(function (p) {
+        var widths = finalWidths(card);
+        parts.forEach(function (p, k) {
+          if (p.link) { p.link.style.position = 'relative'; p.link.style.overflow = 'hidden'; }
+          if (p.title) p.title.style.width = widths[k] + 'px';
+          if (!card) gsap.delayedCall(0.5 * t, function () { if (active) return; if (p.title) p.title.style.width = ''; if (p.link) { p.link.style.overflow = ''; p.link.style.position = ''; } });
           var on = p.card === card, dim = card && !on;
           gsap.to(p.card, { flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : p.rest.bg, duration: 0.5 * t, ease: 'power3.out', overwrite: true, onComplete: card ? null : clear(p.card, 'flexGrow,backgroundColor') });
           p.inks.forEach(function (el, k) { gsap.to(el, { color: on ? contrast : p.rest.ink[k], duration: 0.35 * t, ease: 'power2.out', overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }); });
@@ -156,11 +184,10 @@
           }
           if (p.detail) {
             if (on) {
-              if (p.link) p.link.style.position = 'relative';
-              gsap.set(p.detail, { display: 'flex', position: 'absolute', left: rem(1.5), right: rem(1.5), bottom: rem(1.5) });
-              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.12 * t, ease: 'power3.out', overwrite: 'auto' });
+              gsap.set(p.detail, { display: 'flex', position: 'absolute', left: rem(1.5), width: widths[k], bottom: rem(1.5) });
+              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: 'auto' });
             } else if (p.detail.style.display) {
-              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: 'auto', onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); if (p.link) p.link.style.position = ''; } });
+              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: 'auto', onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
             }
           }
           photo(p.left, on, 1, p.rot[0], t);
