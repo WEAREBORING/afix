@@ -1,4 +1,4 @@
-/* Afix site.js v0.26: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.27: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -261,8 +261,9 @@
   });
 
   /* data-a-pin (Section - Expertises): op elke breedte (niet bij reduced motion) rijden de kaarten van de
-     scrollrij (expertises_list) als één trein met de scroll mee, 0,72 px opzij per px scrollen, zoals het prototype: ze
-     komen van rechts buiten beeld binnen terwijl de sectie omhoog schuift (een x-verschuiving van de rij), en rijden door
+     scrollrij (expertises_list) als één trein met de scroll mee, zoals het prototype: ze komen van rechts buiten beeld
+     binnen terwijl de sectie omhoog schuift (een x-verschuiving van de rij; de eerste kaart staat op zijn plek als de
+     sectie vast gaat staan), en rijden door op hooguit 0,72 px opzij per px scrollen
      terwijl de inhoud van de sectie (het eerste kind, padding-global) vaststaat (de scroll van de rij), tot de laatste
      kaart in beeld is, plus een korte pauze. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
      (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend). site.js zet
@@ -299,11 +300,13 @@
         var H = window.innerHeight, h = stick.offsetHeight;
         // Midden in beeld; is de inhoud hoger dan het scherm, dan staat de onderkant (de rij) in beeld
         var top = h < H ? (H - h) / 2 : H - h;
-        // Start: de eerste kaart net rechts buiten beeld. De trein rijdt vanaf het moment dat de sectie onderin binnenkomt;
-        // vast staat hij tot de laatste kaart binnen is, plus een pauze van een vijfde scherm (minstens 0,6 scherm)
-        var offset = document.documentElement.clientWidth - first.getBoundingClientRect().left;
-        var travel = offset + max, dist = Math.max(0.6 * H, travel / speed - (H - top) + 0.2 * H);
-        m = { top: top, dist: dist, H: H, max: max, offset: offset, travel: travel };
+        // Start: de eerste kaart net rechts buiten beeld. De trein rijdt vanaf het moment dat de sectie onderin binnenkomt,
+        // en de eerste kaart staat op zijn plek precies als de sectie vast gaat staan (op een smal scherm is dat stuk kort).
+        // Vast rijdt hij door op hooguit 0,72 px per px tot de laatste kaart binnen is, plus een pauze van een vijfde scherm
+        var offset = document.documentElement.clientWidth - first.getBoundingClientRect().left, entry = Math.max(1, H - top);
+        var v1 = offset / entry, v2 = Math.min(v1, speed);
+        var dist = Math.max(0.6 * H, max / v2 + 0.2 * H);
+        m = { top: top, dist: dist, H: H, max: max, offset: offset, travel: offset + max, entry: entry, v1: v1, v2: v2 };
         sec.style.height = (h + dist + H) + 'px';
         stick.style.position = 'sticky';
         stick.style.top = top + 'px';
@@ -330,7 +333,7 @@
       function update(instant) {
         if (!m) return;
         var secTop = sec.getBoundingClientRect().top, s = m.top - secTop;
-        var d = clamp((m.H - secTop) * speed, 0, m.travel);
+        var e0 = m.H - secTop, d = clamp(e0 <= m.entry ? e0 * m.v1 : m.offset + (e0 - m.entry) * m.v2, 0, m.travel);
         if (instant) { gsap.killTweensOf(train); train.d = d; place(); }
         // Licht nalopen maakt het schuiven met een muiswiel zachter; met Lenis is de scroll zelf al zacht
         else gsap.to(train, { d: d, duration: lenis ? 0.15 : 0.5, ease: 'power3.out', overwrite: true, onUpdate: place });
@@ -349,7 +352,7 @@
         if (!m) return;
         var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
         var x = clamp(r.left - rr.left + row.scrollLeft - (parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0), 0, m.max);
-        jumpTo(window.scrollY + sec.getBoundingClientRect().top - m.H + (m.offset + x) / speed);
+        jumpTo(window.scrollY + sec.getBoundingClientRect().top - m.H + m.entry + x / m.v2);
         update(true);
       });
 
