@@ -157,18 +157,19 @@
     }, 700);
   }
   function fanChecks(done) {
-    // Waaier (GSAP geladen): actieve kaart recht in het midden, buren schuin; pijl wisselt met de veer
+    // Stapel zoals Figma (GSAP geladen): actieve kaart recht, de volgende -3° op 66%, die daarna +3° op 33%; teller in de kaart
     var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     sNext.click();
     setTimeout(function () {
       var at = [].findIndex.call(cards, function (c) { return !c.hasAttribute('aria-hidden'); });
-      var g = function (c, p) { return Math.round(gsap.getProperty(c, p)); };
-      var prev = cards[(at + 2) % 3], next = cards[(at + 1) % 3];
-      checks['waaier: actieve kaart recht'] = g(cards[at], 'rotation') === 0 && g(cards[at], 'xPercent') === 0 && getComputedStyle(cards[at]).opacity === '1';
-      checks['waaier: buren schuin ernaast'] = g(next, 'rotation') === 10 && g(next, 'xPercent') === 25 && g(prev, 'rotation') === -10 && visible(next) && next.getAttribute('aria-hidden') === 'true';
-      checks['waaier: teller loopt mee'] = $('[data-a-carousel-current]').textContent === String(at + 1).padStart(2, '0');
+      var g = function (c, p) { return Math.round(gsap.getProperty(c, p) * 100) / 100; };
+      var next = cards[(at + 1) % 3], after = cards[(at + 2) % 3];
+      checks['stapel: actieve kaart recht en dekkend'] = g(cards[at], 'rotation') === 0 && g(cards[at], 'x') === 0 && getComputedStyle(cards[at]).opacity === '1';
+      checks['stapel: volgende kaarten schuin erachter'] = g(next, 'rotation') === -3 && g(next, 'opacity') === 0.66 && g(after, 'rotation') === 3 && g(after, 'opacity') === 0.33 && next.getAttribute('aria-hidden') === 'true';
+      checks['stapel: teller in de actieve kaart'] = cards[at].contains($('[data-a-carousel-count]')) && $('[data-a-carousel-current]').textContent === String(at + 1).padStart(2, '0');
+      checks['stapel: grab-cursor'] = getComputedStyle(cards[at]).cursor === 'grab';
       done();
-    }, still ? 50 : 900);
+    }, still ? 50 : 1200);
   }
   function centerChecks(done) {
     // Smalle tabbalk (zoals op de telefoon): de actieve tab schuift naar het midden
