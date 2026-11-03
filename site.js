@@ -1,4 +1,4 @@
-/* Afix site.js v0.17: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.18: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -137,16 +137,31 @@
         return p;
       });
       function clear(el, props) { return function () { if (el) gsap.set(el, { clearProps: props }); }; }
-      // Foto's: binnen van opzij en van onder, eerst tegen de kant in gekanteld, en met een lange uitloop naar hun stand;
-      // weg naar het midden, kleiner en rechter. Tijdens de hover lopen ze licht mee met de muis (xPercent en yPercent,
-      // los van de x en y van het binnenkomen).
-      function photo(img, on, side, rot, t) {
+      // Foto's als een stapel, zoals de kaarten van Reviews: bij wisselen tussen twee uitdagingen komt de nieuwe foto dekkend
+      // bovenop de oude, van de kant waar de muis naartoe gaat (dir 1 = naar rechts), schuin, en veert elastisch op zijn
+      // stand uit de class. De oude blijft dekkend, schuift iets terug en verdwijnt pas als hij bedekt is. Zo zijn er nooit
+      // twee halfdoorzichtige foto's over elkaar. De eerste foto (dir 0) komt van opzij binnen; bij weggaan van de balk
+      // vervagen ze naar het midden. Tijdens de hover lopen ze licht mee met de muis (xPercent en yPercent, los van x en y).
+      var layer = 0;
+      function photoIn(img, side, rot, dir, t) {
         if (!img) return;
-        if (on) {
-          gsap.fromTo(img, { x: side * rem(3.5) * t, y: rem(1.5) * t, scale: t ? 0.84 : 1, rotation: t ? -rot : rot }, { x: 0, y: 0, scale: 1, rotation: rot, duration: 0.9 * t, delay: side < 0 ? 0.07 * t : 0, ease: 'expo.out', overwrite: 'auto' });
-          gsap.fromTo(img, { opacity: 0 }, { opacity: 1, duration: 0.35 * t, delay: side < 0 ? 0.07 * t : 0, ease: 'power1.out', overwrite: 'auto' });
-        } else if (gsap.getProperty(img, 'opacity') > 0) {
-          gsap.to(img, { x: side * rem(1.75) * t, y: rem(0.75) * t, xPercent: 0, yPercent: 0, scale: t ? 0.92 : 1, rotation: rot * 0.3, opacity: 0, duration: 0.4 * t, ease: 'power2.in', overwrite: 'auto', onComplete: clear(img, 'opacity,transform') });
+        img.style.zIndex = ++layer;
+        var delay = side < 0 ? 0.06 * t : 0;
+        // overwrite true: ook een uitgestelde verdwijn-tween van een snelle heen-en-weer stopt
+        gsap.fromTo(img, { opacity: 0 }, { opacity: 1, duration: (dir ? 0.12 : 0.35) * t, delay: delay, ease: 'power1.out', overwrite: true });
+        if (!t) return gsap.set(img, { x: 0, y: 0, scale: 1, rotation: rot });
+        gsap.fromTo(img, dir ? { x: dir * rem(5), y: rem(0.75), scale: 0.92, rotation: rot + dir * 10 } : { x: side * rem(3.5), y: rem(1.5), scale: 0.84, rotation: -rot },
+          { x: 0, y: 0, scale: 1, rotation: rot, duration: dir ? 0.8 : 0.9, delay: delay, ease: 'elastic.out(1.1, 0.85)' });
+      }
+      function photoOut(img, side, rot, dir, t) {
+        if (!img || gsap.getProperty(img, 'opacity') === 0) return;
+        var done = clear(img, 'opacity,transform,zIndex');
+        if (!t) return done();
+        if (dir) {
+          gsap.to(img, { x: -dir * rem(1.25), rotation: rot - dir * 5, scale: 0.94, xPercent: 0, yPercent: 0, duration: 0.5, ease: 'power2.out', overwrite: true });
+          gsap.to(img, { opacity: 0, duration: 0.2, delay: 0.35, ease: 'power1.in', onComplete: done });
+        } else {
+          gsap.to(img, { x: side * rem(1.75), y: rem(0.75), xPercent: 0, yPercent: 0, scale: 0.92, rotation: rot * 0.3, opacity: 0, duration: 0.4, ease: 'power2.in', overwrite: true, onComplete: done });
         }
       }
       strip.addEventListener('pointermove', function (e) {
@@ -166,8 +181,12 @@
       }
       function set(card) {
         if (card === active) return;
+        var from = parts.filter(function (p) { return p.card === active; })[0], to = parts.filter(function (p) { return p.card === card; })[0];
         active = card;
         var t = reduce.matches ? 0 : 1;
+        var dir = from && to ? (parts.indexOf(to) > parts.indexOf(from) ? 1 : -1) : 0;
+        if (from) { photoOut(from.left, 1, from.rot[0], dir, t); photoOut(from.right, -1, from.rot[1], dir, t); }
+        if (to) { photoIn(to.left, 1, to.rot[0], dir, t); photoIn(to.right, -1, to.rot[1], dir, t); }
         var widths = finalWidths(card);
         parts.forEach(function (p, k) {
           if (p.link) { p.link.style.position = 'relative'; p.link.style.overflow = 'hidden'; }
@@ -190,8 +209,6 @@
               gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: 'auto', onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
             }
           }
-          photo(p.left, on, 1, p.rot[0], t);
-          photo(p.right, on, -1, p.rot[1], t);
         });
       }
       parts.forEach(function (p) {
