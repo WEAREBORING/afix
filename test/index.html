@@ -329,6 +329,8 @@
   }
 
   function report() {
+    // Smooth scroll: Lenis aan, behalve bij reduced motion
+    checks['smooth scroll: Lenis aan, uit bij reduced motion'] = document.documentElement.classList.contains('lenis') !== matchMedia('(prefers-reduced-motion: reduce)').matches;
     var failed = Object.keys(checks).filter(function (k) { return !checks[k]; });
     document.getElementById('result').textContent = failed.length ? 'MISLUKT: ' + failed.join(', ') : 'Alle ' + Object.keys(checks).length + ' controles groen';
   }

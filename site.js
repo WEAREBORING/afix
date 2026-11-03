@@ -1,10 +1,31 @@
-/* Afix site.js v0.24: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.25: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   function each(sel, fn) { [].forEach.call(document.querySelectorAll(sel), fn); }
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
   function num(el, attr, fallback) { var v = parseFloat(el.getAttribute(attr)); return isNaN(v) ? fallback : v; }
+
+  /* Smooth scroll (hele site): Lenis, zoals het prototype (lerp 0.09, wiel 0.9). Afgesproken uitzondering op "alleen GSAP":
+     Lenis vlakt alleen het scrollen met muiswiel en trackpad af en laat de gewone scroll van de browser staan, dus sticky
+     (data-a-pin) en de scroll-events van de modules blijven werken. Niet bij touch (standaard van Lenis) en niet bij reduced
+     motion. Loopt mee op de ticker van GSAP, zodat scrollen en animaties in hetzelfde frame bewegen. Vaste versie van
+     jsDelivr; de bijbehorende css staat in site.css. Een element met data-lenis-prevent scrolt zelf (bijvoorbeeld een lijst
+     met een eigen scrollbalk). Ankerlinks (#id) scrollen zacht via Lenis. */
+  var lenis = null;
+  if (!reduce.matches) withGsap(function (gsap) {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js';
+    s.onload = function () {
+      if (!window.Lenis) return;
+      lenis = new window.Lenis({ lerp: 0.09, wheelMultiplier: 0.9, anchors: true, autoRaf: false });
+      gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+      gsap.ticker.lagSmoothing(0);
+    };
+    document.head.appendChild(s);
+  });
+  // Naar een scrollpositie springen, ook als Lenis loopt (anders zet Lenis de oude positie terug)
+  function jumpTo(y) { if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); }
 
   /* data-a-year: zet het huidige jaar (bijvoorbeeld het copyright in de footer) */
   each('[data-a-year]', function (el) { el.textContent = new Date().getFullYear(); });
@@ -305,8 +326,8 @@
         var secTop = sec.getBoundingClientRect().top, s = m.top - secTop;
         var d = clamp((m.H - secTop) * speed, 0, m.travel);
         if (instant) { gsap.killTweensOf(train); train.d = d; place(); }
-        // Licht nalopen maakt het schuiven met een muiswiel zachter
-        else gsap.to(train, { d: d, duration: 0.5, ease: 'power3.out', overwrite: true, onUpdate: place });
+        // Licht nalopen maakt het schuiven met een muiswiel zachter; met Lenis is de scroll zelf al zacht
+        else gsap.to(train, { d: d, duration: lenis ? 0.15 : 0.5, ease: 'power3.out', overwrite: true, onUpdate: place });
         var o = clamp((s - m.dist) / m.H, 0, 1), e = o < 0.5 ? 2 * o * o : 1 - Math.pow(-2 * o + 2, 2) / 2;
         gsap.set(inner, { y: -0.16 * m.H * e, scale: 1 - 0.05 * e, opacity: 1 - 0.8 * e, transformOrigin: '50% 40%' });
       }
@@ -319,7 +340,7 @@
         if (!m) return;
         var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
         var x = clamp(r.left - rr.left + row.scrollLeft - (parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0), 0, m.max);
-        window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - m.H + (m.offset + x) / speed);
+        jumpTo(window.scrollY + sec.getBoundingClientRect().top - m.H + (m.offset + x) / speed);
         update(true);
       });
       measure();
