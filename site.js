@@ -1,4 +1,4 @@
-/* Afix site.js v0.9: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.10: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -81,7 +81,8 @@
      (achtergrond, kleur, opacity: de donkere pil). Pijltjestoetsen, Home en End gaan naar een andere tab.
      Staat er een data-a-tab-pill in de tabbalk (kennis_tab-pill, als laatste kind), dan is dat de pil: site.js schuift
      hem met GSAP naar de gekozen tab en de tab zelf blijft doorzichtig. Bij wisselen bewegen de kaarten (data-a-card)
-     mee met de pil: de oude schuiven weg, de nieuwe komen na elkaar binnen van de kant waar de pil naartoe gaat. */
+     mee met de pil: de oude schuiven weg, de nieuwe komen na elkaar binnen van de kant waar de pil naartoe gaat.
+     Past de tabbalk niet (telefoon), dan schuift hij mee zodat de actieve tab in het midden staat. */
   each('[data-a-tabs]', function (wrap) {
     var tabs = [].slice.call(wrap.querySelectorAll('[data-a-tab]'));
     var panels = [].slice.call(wrap.querySelectorAll('[data-a-tab-panel]'));
@@ -101,8 +102,15 @@
       else if (gsap) gsap.set(pill, to);
       else { pill.style.width = to.width + 'px'; pill.style.transform = 'translateX(' + to.x + 'px)'; }
     }
+    var bar = tabs[0].parentElement;
+    function centerTab(animate) {
+      if (!current || bar.scrollWidth <= bar.clientWidth) return;
+      var x = Math.max(0, Math.min(bar.scrollWidth - bar.clientWidth, current.offsetLeft + current.offsetWidth / 2 - bar.clientWidth / 2));
+      if (gsap && animate && !reduce.matches) gsap.to(bar, { scrollLeft: x, duration: 0.45, ease: 'power3.out', overwrite: true });
+      else bar.scrollLeft = x;
+    }
     withGsap(function (g) { gsap = g; movePill(false); });
-    window.addEventListener('resize', function () { movePill(false); });
+    window.addEventListener('resize', function () { movePill(false); centerTab(false); });
     function panelOf(tab) { return panels.filter(function (p) { return p.getAttribute('data-a-tab-panel') === tab.getAttribute('data-a-tab'); })[0]; }
     function only(panel) { panels.forEach(function (p) { p.style.display = p === panel ? 'block' : 'none'; }); }
     function cardsOf(panel) { var c = panel.querySelectorAll('[data-a-card]'); return c.length ? [].slice.call(c) : [panel]; }
@@ -137,7 +145,9 @@
       });
       showPanel(panelOf(tab), dir, animate);
       movePill(animate);
-      if (focus) tab.focus();
+      centerTab(animate);
+      // Zonder eigen scrollsprong van de browser: centerTab schuift de balk al
+      if (focus) tab.focus({ preventScroll: true });
     }
     tabs.forEach(function (t, i) {
       var panel = panelOf(t);

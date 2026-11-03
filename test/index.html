@@ -156,6 +156,19 @@
       }, 700);
     }, 700);
   }
+  function centerChecks(done) {
+    // Smalle tabbalk (zoals op de telefoon): de actieve tab schuift naar het midden
+    var bar = $('[role="tablist"]');
+    bar.style.display = 'flex'; bar.style.maxWidth = '9rem'; bar.style.overflowX = 'auto';
+    tabs[1].click();
+    setTimeout(function () {
+      var b = bar.getBoundingClientRect(), t = tabs[1].getBoundingClientRect();
+      checks['smalle tabbalk: actieve tab in het midden'] = Math.abs((t.left + t.width / 2) - (b.left + b.width / 2)) < 2;
+      bar.style.display = bar.style.maxWidth = bar.style.overflowX = '';
+      tabs[0].click();
+      setTimeout(done, 800);
+    }, 700);
+  }
   function swapChecks(done) {
     // Wissel met GSAP: eerst gaat het oude paneel weg, daarna komt het nieuwe; snel doorklikken eindigt netjes
     var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -165,7 +178,7 @@
       tabs[1].click(); tabs[0].click();
       setTimeout(function () {
         checks['tabwissel: snel klikken eindigt netjes'] = shown(tpanels[0]) && !shown(tpanels[1]) && !shown(tpanels[2]) && tpanels[0].style.opacity === '' && tpanels[0].style.transform === '';
-        done();
+        centerChecks(done);
       }, 1200);
     }, 60);
   }
