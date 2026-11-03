@@ -1,4 +1,4 @@
-/* Afix site.js v0.15: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.16: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -73,6 +73,108 @@
       else if (navToggle && navToggle.getAttribute('aria-expanded') === 'true') { setMenu(false); navToggle.focus(); }
     });
     document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { closeDrops(); setMenu(false); } });
+  });
+
+  /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
+     balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
+     hero-home_component over driekwart schermhoogte; de achtergrond blijft. Hover of toetsenbordfocus op een uitdaging
+     (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met tekst in
+     action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld, en de twee
+     foto's van die kaart komen van opzij binnen en kantelen naar hun stand uit de class. De andere titels dimmen.
+     Reduced motion: geen intro en geen vervagen; de hover toont direct, zonder te bewegen. */
+  each('[data-a-hero]', function (hero) {
+    var comp = hero.querySelector('.hero-home_component') || hero;
+    var h1 = hero.querySelector('h1');
+    withGsap(function (gsap) {
+      function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
+      var lines = h1 ? [].slice.call(h1.children).filter(function (el) { return el.tagName === 'SPAN'; }) : [];
+      var intro = [hero.querySelector('.hero-home_heading .tag')].concat(lines, [].slice.call(hero.querySelectorAll('.award')), [hero.querySelector('.hero-home_cards')]).filter(Boolean);
+      // De kopregels zijn inline spans: die schuiven met top (relatief), want een transform werkt daar niet en
+      // inline-block breekt de regels anders af
+      function inline(el) { return lines.indexOf(el) > -1; }
+      if (!reduce.matches && intro.length) {
+        intro.forEach(function (el) { gsap.set(el, inline(el) ? { opacity: 0, position: 'relative', top: rem(1.5), filter: 'blur(0.75rem)' } : { opacity: 0, y: rem(1.5), filter: 'blur(0.75rem)' }); });
+        // Wachten op de fonts (hooguit 0,8 s), anders verspringen de regels halverwege
+        var started = false;
+        var start = function () {
+          if (started) return;
+          started = true;
+          intro.forEach(function (el, i) {
+            gsap.to(el, Object.assign(inline(el) ? { top: 0, clearProps: 'opacity,filter,position,top' } : { y: 0, clearProps: 'opacity,transform,filter' }, { opacity: 1, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', delay: 0.1 + i * 0.09 }));
+          });
+        };
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
+        setTimeout(start, 800);
+      }
+
+      // Vervagen bij wegscrollen
+      var top0 = Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false;
+      function fade() {
+        ticking = false;
+        if (reduce.matches) return gsap.set(comp, { clearProps: 'opacity' });
+        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.75 * window.innerHeight), 0, 1);
+        gsap.set(comp, { opacity: 1 - (1 - Math.pow(1 - p, 3)) });
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
+      fade();
+
+      // Uitdagingen
+      var strip = hero.querySelector('.hero-home_cards');
+      var cards = [].slice.call(hero.querySelectorAll('[data-a-challenge]'));
+      if (!strip || !cards.length) return;
+      var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
+      var active = null;
+      var contrast = getComputedStyle(strip).getPropertyValue('--_theme---action--contrast').trim();
+      var accent = getComputedStyle(strip).getPropertyValue('--_theme---surface--accent').trim();
+      var parts = cards.map(function (c) {
+        var p = { card: c, link: c.querySelector('.hero-card_link'), num: c.querySelector('.hero-card_number'), title: c.querySelector('.hero-card_title'), detail: c.querySelector('.hero-card_detail'), left: c.querySelector('.hero-card_image-left'), right: c.querySelector('.hero-card_image-right') };
+        p.inks = [p.title, p.detail].filter(Boolean);
+        p.rest = { bg: getComputedStyle(c).backgroundColor, ink: p.inks.map(function (el) { return getComputedStyle(el).color; }) };
+        // Stand van de foto's uit de class (gekanteld), om naartoe te draaien
+        p.rot = [p.left, p.right].map(function (img) { return img ? gsap.getProperty(img, 'rotation') : 0; });
+        return p;
+      });
+      function clear(el, props) { return function () { if (el) gsap.set(el, { clearProps: props }); }; }
+      function photo(img, on, side, rot, t) {
+        if (!img) return;
+        if (on) gsap.fromTo(img, { opacity: 0, x: side * rem(2.25) * t, scale: t ? 0.92 : 1, rotation: t ? 0 : rot }, { opacity: 1, x: 0, scale: 1, rotation: rot, duration: 0.5 * t, delay: side < 0 ? 0.06 * t : 0, ease: 'power3.out', overwrite: true });
+        else if (gsap.getProperty(img, 'opacity') > 0) gsap.to(img, { opacity: 0, duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(img, 'opacity,transform') });
+      }
+      function set(card) {
+        if (card === active) return;
+        active = card;
+        var t = reduce.matches ? 0 : 1;
+        parts.forEach(function (p) {
+          var on = p.card === card, dim = card && !on;
+          gsap.to(p.card, { flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : p.rest.bg, duration: 0.5 * t, ease: 'power3.out', overwrite: true, onComplete: card ? null : clear(p.card, 'flexGrow,backgroundColor') });
+          p.inks.forEach(function (el, k) { gsap.to(el, { color: on ? contrast : p.rest.ink[k], duration: 0.35 * t, ease: 'power2.out', overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }); });
+          if (p.num) gsap.to(p.num, { opacity: on ? 0 : dim ? 0.44 : 1, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: card ? null : clear(p.num, 'opacity') });
+          if (p.title && p.num) {
+            // De titel schuift naar de plek van het nummer (bovenaan de kaart)
+            var dy = on ? p.num.getBoundingClientRect().top - p.title.getBoundingClientRect().top + gsap.getProperty(p.title, 'y') : 0;
+            gsap.to(p.title, { y: dy, opacity: dim ? 0.34 : 1, duration: 0.5 * t, ease: 'power3.out', overwrite: 'auto', onComplete: card ? null : clear(p.title, 'transform,opacity') });
+          }
+          if (p.detail) {
+            if (on) {
+              if (p.link) p.link.style.position = 'relative';
+              gsap.set(p.detail, { display: 'flex', position: 'absolute', left: rem(1.5), right: rem(1.5), bottom: rem(1.5) });
+              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.12 * t, ease: 'power3.out', overwrite: 'auto' });
+            } else if (p.detail.style.display) {
+              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: 'auto', onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); if (p.link) p.link.style.position = ''; } });
+            }
+          }
+          photo(p.left, on, 1, p.rot[0], t);
+          photo(p.right, on, -1, p.rot[1], t);
+        });
+      }
+      parts.forEach(function (p) {
+        p.card.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && desktop.matches) set(p.card); });
+        p.card.addEventListener('focusin', function (e) { if (desktop.matches && e.target.matches(':focus-visible')) set(p.card); });
+      });
+      strip.addEventListener('pointerleave', function () { set(null); });
+      strip.addEventListener('focusout', function (e) { if (!strip.contains(e.relatedTarget)) set(null); });
+      desktop.addEventListener('change', function () { set(null); });
+    });
   });
 
   /* data-a-tabs (Section - Kennis): tabs zonder Tabs van Webflow. data-a-tab="<naam>" op elke tab (button, role tab),

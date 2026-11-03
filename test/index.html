@@ -29,6 +29,12 @@
   .case { --_theme---surface--accent: #f9ca00; display: inline-block; }
   .case-card_logo-view { background: rgb(255, 255, 255); padding: 1rem; }
   .case-card_tags, .case-card_text { opacity: 0; }
+  .hero-home_cards { --_theme---surface--accent: #f9ca00; --_theme---action--contrast: #273327; display: flex; width: 40rem; background: #273327; }
+  .hero-card { flex: 1 1 0; color: #fff; }
+  .hero-card_link { display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; padding: 1.5rem; height: 8rem; color: inherit; }
+  .hero-card_title { color: rgb(255, 255, 255); }
+  .hero-card_detail { display: none; }
+  .hero-card_image-left, .hero-card_image-right { position: absolute; width: 4rem; height: 3rem; opacity: 0; transform: rotate(-3deg); background: #ccc; }
 </style>
 </head>
 <body>
@@ -69,6 +75,15 @@
 <div data-a-card class="kcard"><div class="kennis-card_meta"><span class="tag">Label</span><p class="kennis-card_date">30 Jan 26</p><div class="kennis-card_arrow">&rarr;</div></div></div>
 
 <div data-a-case class="case"><div class="case-card_logo-view"><div class="case-card_tags">Label</div>Logo<p class="case-card_text">Omschrijving</p></div></div>
+
+<section data-a-hero="section"><div class="hero-home_component">
+  <div class="hero-home_heading"><div><div class="tag">Eyebrow</div></div><h1><span>Kopregel</span><br><span class="text-style-accent">Accent</span></h1></div>
+  <div class="hero-home_awards"><div class="award">8,61</div><div class="award">4x</div></div>
+  <div class="hero-home_cards">
+    <div data-a-challenge="item" class="hero-card"><a href="#" class="hero-card_link"><div class="hero-card_number">01</div><div class="hero-card_title">Een</div><div class="hero-card_detail"><p class="hero-card_text">Tekst</p></div></a><div class="hero-card_image-left"></div><div class="hero-card_image-right"></div></div>
+    <div data-a-challenge="item" class="hero-card"><a href="#" class="hero-card_link"><div class="hero-card_number">02</div><div class="hero-card_title">Twee</div><div class="hero-card_detail"><p class="hero-card_text">Tekst</p></div></a><div class="hero-card_image-left"></div><div class="hero-card_image-right"></div></div>
+  </div>
+</div></section>
 
 <p id="result">Bezig...</p>
 
@@ -230,11 +245,28 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['eindeloos vooruit'] = atStart(0);
-            caseChecks(report);
+            caseChecks(function () { heroChecks(report); });
           }, 1000);
         }, 1000);
       }, 1000);
     }, 1000);
+  }
+
+  function heroChecks(done) {
+    // Hero: na de intro staat alles zichtbaar zonder inline stijl; hover (alleen desktop met muis) laat de kaart groeien
+    var intro = document.querySelectorAll('[data-a-hero] .tag, [data-a-hero] h1 > span, [data-a-hero] .award, .hero-home_cards');
+    checks['hero: intro eindigt zichtbaar en schoon'] = [].every.call(intro, function (el) { return getComputedStyle(el).opacity === '1' && !el.style.filter && !el.style.top && !el.style.transform; });
+    var cards = document.querySelectorAll('[data-a-challenge]'), strip = $('.hero-home_cards'), desktop = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+    cards[0].dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    setTimeout(function () {
+      var c = cards[0], shown = getComputedStyle(c).backgroundColor === 'rgb(249, 202, 0)' && c.offsetWidth > cards[1].offsetWidth * 1.5 && getComputedStyle(c.querySelector('.hero-card_detail')).display === 'flex' && getComputedStyle(c.querySelector('.hero-card_detail')).opacity === '1' && getComputedStyle(c.querySelector('.hero-card_image-left')).opacity === '1' && getComputedStyle(c.querySelector('.hero-card_title')).color === 'rgb(39, 51, 39)' && getComputedStyle(cards[1].querySelector('.hero-card_title')).opacity === '0.34';
+      checks['hero: uitdaging groeit, wordt geel, toont tekst en foto'] = desktop ? shown : !shown;
+      strip.dispatchEvent(new PointerEvent('pointerleave'));
+      setTimeout(function () {
+        checks['hero: uitdaging terug naar de class'] = [].every.call(cards, function (k) { return !k.style.flexGrow && !k.style.backgroundColor && !k.querySelector('.hero-card_detail').getAttribute('style') && getComputedStyle(k.querySelector('.hero-card_image-left')).opacity === '0' && Math.abs(k.offsetWidth - cards[0].offsetWidth) < 1; });
+        done();
+      }, 900);
+    }, 900);
   }
 
   function report() {
