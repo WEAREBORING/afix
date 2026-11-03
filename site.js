@@ -1,4 +1,4 @@
-/* Afix site.js v0.2: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.3: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -31,6 +31,8 @@
     var drops = [].slice.call(nav.querySelectorAll('[data-a-dropdown]'));
     var navToggle = nav.querySelector('[data-a-nav-toggle]');
     var menu = nav.querySelector('[data-a-nav-menu]');
+    var gsap = null;
+    if (drops.length) withGsap(function (g) { gsap = g; });
     function toggleOf(dd) { return dd.querySelector('[data-a-dropdown-toggle]'); }
     function isOpen(dd) { var t = toggleOf(dd); return !!t && t.getAttribute('aria-expanded') === 'true'; }
     function setDrop(dd, open) {
@@ -39,7 +41,9 @@
       var caret = toggle.querySelector('svg');
       toggle.setAttribute('aria-expanded', open);
       panel.style.display = open ? 'flex' : '';
-      if (caret) { caret.style.transition = reduce.matches ? '' : 'transform 0.2s'; caret.style.transform = open ? 'rotate(180deg)' : ''; }
+      // Pijltje draait mee; zolang GSAP nog laadt springt hij
+      if (caret && gsap) gsap.to(caret, { rotation: open ? 180 : 0, duration: reduce.matches ? 0 : 0.2, ease: 'power2.out', overwrite: true });
+      else if (caret) caret.style.transform = open ? 'rotate(180deg)' : '';
     }
     function closeDrops(except) { drops.forEach(function (dd) { if (dd !== except && isOpen(dd)) setDrop(dd, false); }); }
     function setMenu(open) {
@@ -145,19 +149,36 @@
 
   /* Scrollrij: een pijl schuift naar de volgende of vorige kaart (scroll-snap doet de uitlijning), aan het eind terug
      naar het begin. Schuift elke 4 seconden zelf door als de rij in beeld is, niet bij hover, focus of reduced motion.
-     Met de muis te slepen; op touch scrolt de rij zelf. */
+     Met de muis te slepen; op touch scrolt de rij zelf. Het schuiven gaat met GSAP. */
   function carouselRow(list, items) {
-    function behavior() { return reduce.matches ? 'auto' : 'smooth'; }
+    var gsap = null, tween = null, dest = 0;
+    withGsap(function (g) { gsap = g; });
+    // Schuiven met GSAP; scroll-snap staat tijdens de tween uit, anders trekt de browser de rij steeds terug
+    function scrollTo(x) {
+      stop();
+      if (!gsap || reduce.matches) { list.scrollLeft = x; return; }
+      list.style.scrollSnapType = 'none';
+      dest = x;
+      tween = gsap.to(list, { scrollLeft: x, duration: 0.6, ease: 'power3.out', onComplete: stop });
+    }
+    function stop() {
+      if (!tween) return;
+      tween.kill();
+      tween = null;
+      list.style.scrollSnapType = '';
+    }
     function go(d) {
-      var start = list.getBoundingClientRect().left + (parseFloat(getComputedStyle(list).scrollPaddingLeft) || 0);
+      // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
+      var now = tween ? dest : list.scrollLeft;
+      var start = list.getBoundingClientRect().left + (parseFloat(getComputedStyle(list).scrollPaddingLeft) || 0) + now - list.scrollLeft;
       var lefts = items.map(function (it) { return it.getBoundingClientRect().left - start; });
       var max = list.scrollWidth - list.clientWidth;
       var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0]
         : d < 0 ? lefts.filter(function (x) { return x < -2; }).pop()
         : lefts.reduce(function (a, b) { return Math.abs(b) < Math.abs(a) ? b : a; });
-      if (d > 0 && (to === undefined || list.scrollLeft >= max - 2)) list.scrollTo({ left: 0, behavior: behavior() });
-      else if (to === undefined) list.scrollTo({ left: max, behavior: behavior() });
-      else list.scrollBy({ left: to, behavior: behavior() });
+      if (d > 0 && (to === undefined || now >= max - 2)) scrollTo(0);
+      else if (to === undefined) scrollTo(max);
+      else scrollTo(Math.min(max, Math.max(0, now + to)));
     }
     var inView = false, paused = false, timer;
     function schedule() {
@@ -169,10 +190,11 @@
     list.addEventListener('mouseleave', function () { paused = false; });
     list.addEventListener('focusin', function () { paused = true; });
     list.addEventListener('focusout', function () { paused = false; });
-    list.addEventListener('wheel', schedule, { passive: true });
+    list.addEventListener('wheel', function () { stop(); schedule(); }, { passive: true });
 
     var drag = null, dragged = false;
     list.addEventListener('pointerdown', function (e) {
+      stop();
       schedule();
       dragged = false;
       if (e.pointerType === 'mouse' && e.button === 0) drag = { x: e.clientX, left: list.scrollLeft, id: e.pointerId };
@@ -209,11 +231,15 @@
 
   /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het
      Webflow-CDN; houd de versie gelijk aan die van Webflow. */
+  var gsapWaiting;
   function withGsap(fn) {
     if (window.gsap) return fn(window.gsap);
+    // Vragen meer modules hem tegelijk, dan maar één keer laden
+    if (gsapWaiting) return gsapWaiting.push(fn);
+    gsapWaiting = [fn];
     var s = document.createElement('script');
     s.src = 'https://cdn.prod.website-files.com/gsap/3.15.0/gsap.min.js';
-    s.onload = function () { if (window.gsap) fn(window.gsap); };
+    s.onload = function () { if (window.gsap) gsapWaiting.forEach(function (f) { f(window.gsap); }); };
     document.head.appendChild(s);
   }
 

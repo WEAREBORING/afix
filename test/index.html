@@ -112,21 +112,38 @@
 
   // Scrollrij: pas na het laden (vóór de eerste weergave negeert de browser smooth scrollen), en dat scrollen duurt even
   var row = $('.row');
-  window.addEventListener('load', function () { setTimeout(rowChecks, 300); });
+  window.addEventListener('load', function waitGsap(_, n) {
+    // site.js laadt GSAP zelf van het Webflow-CDN; wacht daarop (maximaal 5 s)
+    n = n || 0;
+    if (window.gsap || n > 50) setTimeout(rowChecks, 300); else setTimeout(function () { waitGsap(null, n + 1); }, 100);
+  });
   function rowChecks() {
-  $('#werk [data-a-carousel-next]').click();
-  setTimeout(function () {
-    checks['rij volgende kaart'] = Math.abs(row.scrollLeft - row.children[1].offsetLeft + row.children[0].offsetLeft) < 2;
-    $('#werk [data-a-carousel-prev]').click();
+    // GSAP is nu geladen: het pijltje draait met een tween
+    // (eerst afwachten: een klik op de rijknop is een klik buiten de nav en sluit de dropdown)
+    t1.click();
     setTimeout(function () {
-      checks['rij vorige kaart'] = row.scrollLeft < 2;
+      checks['pijltje draait met GSAP'] = !!window.gsap && gsap.getProperty(t1.querySelector('svg'), 'rotation') === 180;
+      t1.click();
+      rowNext();
+    }, 400);
+  }
+  function rowNext() {
+    $('#werk [data-a-carousel-next]').click();
+    // Bij reduced motion springt de rij, zonder tween
+    setTimeout(function () { checks['rij schuift met GSAP'] = !!window.gsap && gsap.isTweening(row) !== matchMedia('(prefers-reduced-motion: reduce)').matches; }, 100);
+    setTimeout(function () {
+      checks['rij volgende kaart'] = Math.abs(row.scrollLeft - row.children[1].offsetLeft + row.children[0].offsetLeft) < 2;
+      checks['snap terug na schuiven'] = row.style.scrollSnapType === '';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
-        checks['rij begin naar eind'] = row.scrollLeft >= row.scrollWidth - row.clientWidth - 2;
-        report();
+        checks['rij vorige kaart'] = row.scrollLeft < 2;
+        $('#werk [data-a-carousel-prev]').click();
+        setTimeout(function () {
+          checks['rij begin naar eind'] = row.scrollLeft >= row.scrollWidth - row.clientWidth - 2;
+          report();
+        }, 1000);
       }, 1000);
     }, 1000);
-  }, 1000);
   }
 
   function report() {
