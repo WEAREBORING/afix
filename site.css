@@ -1,8 +1,9 @@
-/* Afix site.css v0.2: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
+/* Afix site.css v0.3: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
 
-/* Vloeiende root-fontgrootte: 1rem = 16px op de ontwerpbreedte en daaronder, groter op bredere schermen (tot 20px).
-   1.1111vw = 16 / 1440 * 100: bij een andere ontwerpbreedte 1600 / ontwerpbreedte. */
-html { font-size: clamp(1rem, 1.1111vw, 1.25rem); }
+/* Vloeiende root-fontgrootte: 1rem = 16px op het ontwerpformaat (1440 x 900) en daaronder. Groter alleen als het scherm
+   zowel breder als hoger is, tot 18px; zo past een sectie ook op een breed maar laag scherm.
+   1.1111vw = 16 / 1440 * 100 en 1.7778vh = 16 / 900 * 100: bij een ander ontwerpformaat 1600 / breedte en 1600 / hoogte. */
+html { font-size: clamp(1rem, min(1.1111vw, 1.7778vh), 1.125rem); }
 
 /* Rich text: geen marge boven het eerste en onder het laatste element */
 .w-richtext > :first-child { margin-top: 0; }
