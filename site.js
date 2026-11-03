@@ -1,4 +1,4 @@
-/* Afix site.js v0.5: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.6: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -183,22 +183,23 @@
     list.style.scrollSnapType = 'none';
     // Verticaal scrollen over de rij blijft bij de pagina; horizontaal slepen doet site.js
     list.style.touchAction = 'pan-y';
-    function scrollTo(x, duration) {
+    function scrollTo(x, duration, ease) {
       stop();
       if (!gsap || reduce.matches) { list.scrollLeft = x; normalize(); return; }
       dest = x;
-      tween = gsap.to(list, { scrollLeft: x, duration: duration || 0.6, ease: 'power3.out', onComplete: function () { stop(); normalize(); } });
+      tween = gsap.to(list, { scrollLeft: x, duration: duration || 0.6, ease: ease || 'power3.out', onComplete: function () { stop(); normalize(); } });
     }
     function stop() {
       if (tween) tween.kill();
       tween = null;
     }
-    function go(d) {
+    function go(d, auto) {
       // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
       var now = tween ? dest : list.scrollLeft;
       var lefts = cards.map(function (c) { return posOf(c) - now; });
       var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0] : lefts.filter(function (x) { return x < -2; }).pop();
-      if (to !== undefined) scrollTo(clampScroll(now + to));
+      // Zelf doorschuiven: langer en zacht op gang komen; een pijlklik reageert direct
+      if (to !== undefined) scrollTo(clampScroll(now + to), auto ? 1.2 : 0.6, auto ? 'power2.inOut' : 'power3.out');
     }
     function clampScroll(x) { return Math.min(list.scrollWidth - list.clientWidth, Math.max(0, x)); }
     // Naar de kaart die het dichtst bij x ligt; dir 1 of -1 dwingt minstens één kaart verder dan from
@@ -211,7 +212,7 @@
     var inView = false, paused = false, timer;
     function schedule() {
       clearTimeout(timer);
-      timer = setTimeout(function () { if (inView && !paused && !drag && !document.hidden && !reduce.matches) go(1); schedule(); }, 4000);
+      timer = setTimeout(function () { if (inView && !paused && !drag && !document.hidden && !reduce.matches) go(1, true); schedule(); }, 4000);
     }
     if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { inView = es[0].isIntersecting; }, { threshold: 0.3 }).observe(list);
     list.addEventListener('mouseenter', function () { paused = true; });
