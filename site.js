@@ -1,4 +1,4 @@
-/* Afix site.js v0.79: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.80: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1516,18 +1516,19 @@
     });
   });
 
-  /* Datums (kennis-card_date, kennis-session_date en data-a-date): Webflow schrijft Engelse maanden ("14 Feb 26",
+  /* Datums (kennis-card_date, kennis-session_date en data-a-date, ook op een verborgen formulierveld): Webflow schrijft Engelse maanden ("14 Feb 26",
      "12 December 2026", "January 29, 2026"). site.js maakt er "14 feb ’26" en "12 december 2026" van. Op de class en niet
      op een attribuut in de lijsten: die class staat in elke kaart. */
   var monthsEn = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
   var monthsShort = 'jan feb mrt apr mei jun jul aug sep okt nov dec'.split(' ');
   var monthsLong = 'januari februari maart april mei juni juli augustus september oktober november december'.split(' ');
   each('.kennis-card_date, .kennis-session_date, [data-a-date]', function (el) {
-    var text = el.textContent.trim().replace(/^([A-Za-z]+) (\d{1,2}), (\d{4})$/, '$2 $1 $3');
+    var prop = el.tagName === 'INPUT' ? 'value' : 'textContent';
+    var text = el[prop].trim().replace(/^([A-Za-z]+) (\d{1,2}), (\d{4})$/, '$2 $1 $3');
     var m = /^(\d{1,2}) ([A-Za-z]+) (\d{2}|\d{4})$/.exec(text);
     var i = m ? monthsEn.indexOf(m[2].slice(0, 3).toLowerCase()) : -1;
     if (i < 0) return;
-    el.textContent = +m[1] + ' ' + (m[2].length > 3 ? monthsLong[i] : monthsShort[i]) + ' ' + (m[3].length === 2 ? '’' + m[3] : m[3]);
+    el[prop] = +m[1] + ' ' + (m[2].length > 3 ? monthsLong[i] : monthsShort[i]) + ' ' + (m[3].length === 2 ? '’' + m[3] : m[3]);
   });
 
   /* data-a-toc (zijkolom blog, kennis-detail_aside): inhoudsopgave uit de Kop 2's in data-a-toc-content. De eerste link in
