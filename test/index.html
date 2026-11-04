@@ -398,9 +398,15 @@
       // Eind van het vaststaan: de rij is helemaal doorgeschoven
       to(top - (parseFloat(sec.style.height) - sec.firstElementChild.offsetHeight - H));
       setTimeout(function () {
-        checks['pin: rij aan het eind helemaal doorgeschoven'] = Math.abs(row.scrollLeft - (row.scrollWidth - row.clientWidth)) < 3 && Math.abs(gsap.getProperty(row, 'x')) < 1;
-        window.scrollTo(0, 0);
-        setTimeout(function () { expertiseChecks(done); }, 300);
+        var endX = gsap.getProperty(row, 'x');
+        checks['pin: rij aan het eind helemaal doorgeschoven'] = Math.abs(row.scrollLeft - (row.scrollWidth - row.clientWidth)) < 3 && endX <= 1;
+        // De trein stopt niet: hij rijdt door terwijl de volgende sectie eroverheen schuift
+        window.scrollTo(0, window.scrollY + H * 0.5);
+        setTimeout(function () {
+          checks['pin: kaarten rijden door onder de volgende sectie'] = gsap.getProperty(row, 'x') < endX - H * 0.1;
+          window.scrollTo(0, 0);
+          setTimeout(function () { expertiseChecks(done); }, 300);
+        }, 900);
       }, 900);
     }, 900);
   }

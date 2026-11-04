@@ -1,4 +1,4 @@
-/* Afix site.js v0.61: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.62: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -306,7 +306,8 @@
      sectie vast gaat staan), en rijden door op hooguit 0,72 px opzij per px scrollen
      terwijl de inhoud van de sectie (het eerste kind, padding-global) vaststaat (de scroll van de rij), tot de laatste
      kaart in beeld is, plus een korte pauze. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
-     (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend). site.js zet
+     (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend); de trein rijdt daarbij
+     op dezelfde snelheid door tot hij helemaal bedekt is, dus er is geen stop. site.js zet
      daarvoor de hoogte van de sectie en de negatieve marge van Werk inline. Bij reduced motion en zonder site.js blijft
      het een gewone veegrij (met de muis te slepen). Tab naar een kaart buiten beeld scrolt de pagina naar de plek waar die
      kaart in beeld staat. Op een telefoon wordt alleen opnieuw gemeten als de breedte verandert: de adresbalk die in- en
@@ -352,7 +353,8 @@
         var offset = document.documentElement.clientWidth - first.getBoundingClientRect().left, entry = Math.max(1, H - top);
         var v1 = offset / entry, v2 = Math.min(v1, speed);
         var dist = Math.max(0.6 * H, max / v2 + 0.2 * H);
-        m = { top: top, dist: dist, H: H, max: max, offset: offset, travel: offset + max, entry: entry, v1: v1, v2: v2 };
+        // Doorrijden tot Werk alles bedekt: dist plus een scherm, op dezelfde snelheid
+        m = { top: top, dist: dist, H: H, max: max, offset: offset, travel: offset + max + 1.2 * H * v2, entry: entry, v1: v1, v2: v2 };
         sec.style.height = (h + dist + H) + 'px';
         stick.style.position = 'sticky';
         stick.style.top = top + 'px';
@@ -371,12 +373,13 @@
         }
         update(true);
       }
-      // Hoe ver de trein gereden is (px opzij): eerst schuift de hele rij van rechts binnen, daarna scrolt de rij zelf
+      // Hoe ver de trein gereden is (px opzij): eerst schuift de hele rij van rechts binnen, dan scrolt de rij zelf
       var train = { d: 0 };
       function place() {
         if (!m) return;
-        gsap.set(row, { x: Math.max(0, m.offset - train.d) });
-        row.scrollLeft = Math.max(0, train.d - m.offset);
+        // Voorbij het einde van de rij zelf rijdt de hele rij verder naar links
+        gsap.set(row, { x: Math.max(0, m.offset - train.d) - Math.max(0, train.d - m.offset - m.max) });
+        row.scrollLeft = clamp(train.d - m.offset, 0, m.max);
       }
       function update(instant) {
         if (!m) return;
