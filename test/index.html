@@ -23,6 +23,9 @@
   .tabpanel:first-child { display: block; }
   #kw-voor { background: var(--_theme---surface--page, rgb(245, 240, 232)); color: var(--_theme---text--primary, rgb(29, 29, 27)); }
   #kernwaarden { background: var(--_theme---surface--dark, rgb(39, 51, 39)); color: var(--_theme---text--inverse, rgb(255, 255, 255)); }
+  .footer_cta-list { display: grid; grid-template-columns: minmax(0px, 1fr) minmax(0px, 1fr); gap: 1rem; }
+  .footer_cta-card, .footer_cta-card-dark { position: relative; overflow: hidden; padding: 2rem; background: #eee; }
+  .footer_cta-image { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
   #kw-team img { width: 100%; height: 100%; object-fit: cover; background: #888; }
   .kernwaarde_text { line-height: 1.2; }
   #kw-team { width: 10rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 1rem; }
@@ -122,6 +125,13 @@
   <div class="kernwaarde_rule" id="kw-slot" style="height: 1px; width: 100%; background: #000"></div>
   <div data-a-team="photo" id="kw-team"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
 </div></div></section>
+
+<div style="height: 20rem"></div>
+<div class="footer_cta-list">
+  <div class="footer_cta-card"><div class="footer_cta-content"><h2>Voel jij het ook?</h2><p>Schroom niet en maak een afspraak, je komt er hoe dan ook wijzer uit.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
+  <div class="footer_cta-card-dark"><div class="footer_cta-content"><h2>Eerst zien wat we kunnen?</h2><p>Zie hoe we met onze partners bouwen aan groei.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
+</div>
+<div style="height: 10rem"></div>
 
 <p id="result">Bezig...</p>
 
@@ -287,7 +297,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(report); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { footerChecks(report); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -516,6 +526,44 @@
         }, 1100);
       }, 300);
     }, 300);
+  }
+
+  function footerChecks(done) {
+    var list = $('.footer_cta-list'), cards = list.children, still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var desktop = matchMedia('(hover: hover) and (min-width: 992px)').matches, img = [cards[0].querySelector('img'), cards[1].querySelector('img')];
+    var content = cards[0].querySelector('.footer_cta-content'), restWidth = content.offsetWidth;
+    function op(el) { return getComputedStyle(el).opacity; }
+    function on(c) { c.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); }
+    function off() { list.dispatchEvent(new PointerEvent('pointerleave')); }
+    checks['footer: kaarten starten verborgen'] = still ? op(cards[0]) === '1' : op(cards[0]) === '0' && op(cards[1]) === '0';
+    window.scrollTo(0, window.scrollY + list.getBoundingClientRect().top - innerHeight * 0.4);
+    setTimeout(function () {
+      checks['footer: kaarten komen binnen en staan daarna schoon'] = !cards[0].getAttribute('style') && !cards[1].getAttribute('style') && op(cards[0]) === '1';
+      if (!desktop) return done();
+      on(cards[0]);
+      setTimeout(function () {
+        var ratio = cards[0].offsetWidth / cards[1].offsetWidth;
+        checks['footer: hover maakt de kaart breder, de andere toont zijn foto'] = Math.abs(ratio - 1.5) < 0.05 && op(img[1]) === '1' && op(img[0]) === '0';
+        checks['footer: tekst houdt zijn breedte'] = Math.abs(content.offsetWidth - restWidth) < 1;
+        on(cards[1]);
+        setTimeout(function () {
+          checks['footer: wisselen van kaart wisselt de foto'] = cards[1].offsetWidth > cards[0].offsetWidth * 1.45 && op(img[0]) === '1' && op(img[1]) === '0';
+          off();
+          setTimeout(function () {
+            checks['footer: terug naar de class'] = !list.style.gridTemplateColumns && !content.style.width && !img[0].style.opacity && !img[1].style.opacity && Math.abs(cards[0].offsetWidth - cards[1].offsetWidth) < 1;
+            // Snelle hover mag niets laten hangen
+            on(cards[0]);
+            setTimeout(function () {
+              off();
+              setTimeout(function () {
+                checks['footer: niets blijft hangen na een snelle hover'] = !list.style.gridTemplateColumns && op(img[1]) === '0' && !content.style.width;
+                done();
+              }, 900);
+            }, 40);
+          }, 900);
+        }, 900);
+      }, 900);
+    }, 1400);
   }
 
   function report() {
