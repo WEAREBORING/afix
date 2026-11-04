@@ -1,4 +1,4 @@
-/* Afix site.js v0.76: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.77: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1058,6 +1058,7 @@
       else if (gsap) gsap.set(pill, to);
       else { pill.style.width = to.width + 'px'; pill.style.transform = 'translateX(' + to.x + 'px)'; }
     }
+    var tabHover = window.matchMedia('(hover: hover)');
     var bar = tabs[0].parentElement;
     function centerTab(animate) {
       if (!current || bar.scrollWidth <= bar.clientWidth) return;
@@ -1114,6 +1115,9 @@
         panel.setAttribute('aria-labelledby', t.id);
       }
       t.addEventListener('click', function () { select(t); });
+      // Hover op een niet-actieve tab: de vervaagde tekst wordt helemaal donker, net als in data-a-subnav
+      t.addEventListener('mouseenter', function () { if (gsap && t !== current && tabHover.matches) gsap.to(t, { opacity: 1, duration: reduce.matches ? 0 : 0.25, ease: 'power2.out', overwrite: true }); });
+      t.addEventListener('mouseleave', function () { if (gsap && t !== current) gsap.to(t, { opacity: off[2], duration: reduce.matches ? 0 : 0.25, ease: 'power2.out', overwrite: true }); });
       t.addEventListener('keydown', function (e) {
         var to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
         if (to === undefined) return;
@@ -1588,12 +1592,13 @@
     });
   });
 
-  /* data-a-row (rijen op de kennispagina): een zijwaarts scrollende rij zonder kopieën, zodat filteren werkt. Met muis via
-     de pijlknoppen (Element - Pijlknoppen in dezelfde data-a-row), op touch vegen. Aan het begin en eind vervaagt de pijl. */
+  /* data-a-row (rijen op de kennispagina): een zijwaarts scrollende rij zonder kopieën, zodat filteren werkt. Met muis slepen
+     of de pijlknoppen (Element - Pijlknoppen in dezelfde data-a-row), op touch vegen. Aan het begin en eind vervaagt de pijl. */
   each('[data-a-row]', function (row) {
     var list = row.querySelector('.kennis-rij_list');
     if (!list) return;
     var prev = row.querySelector('[data-a-carousel-prev]'), next = row.querySelector('[data-a-carousel-next]'), gsap = null;
+    var mouse = window.matchMedia('(hover: hover)'), drag = null, dragged = false;
     withGsap(function (g) { gsap = g; });
     function end() { return list.scrollWidth - list.clientWidth; }
     function setButton(btn, on) {
@@ -1602,16 +1607,65 @@
       if (gsap) gsap.to(btn, { opacity: on ? 1 : 0.3, duration: reduce.matches ? 0 : 0.2, ease: 'power2.out', overwrite: true });
       else btn.style.opacity = on ? 1 : 0.3;
     }
-    function state() { setButton(prev, list.scrollLeft > 1); setButton(next, list.scrollLeft < end() - 1); }
-    function go(dir) {
+    function state() {
+      setButton(prev, list.scrollLeft > 1);
+      setButton(next, list.scrollLeft < end() - 1);
+      if (!drag) list.style.cursor = mouse.matches && end() > 1 ? 'grab' : '';
+    }
+    function stepSize() {
       var card = [].filter.call(list.children, function (c) { return c.offsetWidth; })[0];
-      if (!card) return;
-      var step = card.offsetWidth + parseFloat(getComputedStyle(list).columnGap), to = clamp((Math.round(list.scrollLeft / step) + dir) * step, 0, end());
-      if (gsap && !reduce.matches) gsap.to(list, { scrollLeft: to, duration: 0.7, ease: 'power3.out', overwrite: true });
+      return card ? card.offsetWidth + parseFloat(getComputedStyle(list).columnGap) : 0;
+    }
+    function glide(to, duration) {
+      if (gsap && !reduce.matches) gsap.to(list, { scrollLeft: to, duration: duration, ease: 'power3.out', overwrite: true });
       else list.scrollLeft = to;
+    }
+    function go(dir) {
+      var step = stepSize();
+      if (step) glide(clamp((Math.round(list.scrollLeft / step) + dir) * step, 0, end()), 0.7);
     }
     if (prev) prev.addEventListener('click', function () { go(-1); });
     if (next) next.addEventListener('click', function () { go(1); });
+    // Slepen met de muis, zoals de Werk-rij: de rij volgt de cursor, schiet met zijn vaart door en remt af op een kaart
+    list.addEventListener('pointerdown', function (e) {
+      dragged = false;
+      if (e.button !== 0 || e.pointerType === 'touch' || end() <= 1) return;
+      if (gsap) gsap.killTweensOf(list);
+      drag = { x: e.clientX, left: list.scrollLeft, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 };
+    });
+    list.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x;
+      if (!dragged && Math.abs(dx) > 6) {
+        dragged = true;
+        list.style.userSelect = 'none';
+        list.setPointerCapture(drag.id);
+        list.style.cursor = 'grabbing';
+      }
+      if (!dragged) return;
+      list.scrollLeft = drag.left - dx;
+      var dt = e.timeStamp - drag.lastT;
+      if (dt > 0) drag.v = 0.8 * ((e.clientX - drag.lastX) / dt) + 0.2 * drag.v;
+      drag.lastX = e.clientX;
+      drag.lastT = e.timeStamp;
+    });
+    function endDrag(e) {
+      if (!drag) return;
+      var d = drag, step = stepSize();
+      drag = null;
+      if (!dragged) return;
+      list.style.userSelect = '';
+      list.style.cursor = 'grab';
+      // Stond de muis voor het loslaten al stil, dan geen vaart meer
+      var v = e && e.timeStamp - d.lastT < 80 ? d.v : 0, x = list.scrollLeft - v * 280;
+      if (step) glide(x >= end() - step / 2 ? end() : clamp(Math.round(x / step) * step, 0, end()), Math.min(0.9, 0.5 + Math.abs(v) * 0.15));
+    }
+    list.addEventListener('pointerup', endDrag);
+    list.addEventListener('pointercancel', function () { endDrag(null); });
+    // Na slepen geen klik op de kaartlink, en geen sleepbeeld van een link of foto
+    list.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
+    list.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    [].forEach.call(list.querySelectorAll('a'), function (a) { a.style.cursor = 'inherit'; });
     list.addEventListener('scroll', state, { passive: true });
     window.addEventListener('resize', state);
     state();

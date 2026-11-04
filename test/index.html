@@ -790,6 +790,7 @@
     next.click();
     setTimeout(function () {
       checks['rij: pijl schuift een kaart door'] = list.scrollLeft > 150 && !prev.disabled;
+      checks['rij: met muis een grijp-cursor'] = list.style.cursor === (matchMedia('(hover: hover)').matches ? 'grab' : '');
       type('');
       checks['rij: filteren zet de rij terug naar het begin'] = list.scrollLeft === 0;
       checks['subnav: gescrold staat hij onderaan vast, met een houder op zijn plek'] = getComputedStyle(nav).position === 'fixed' && !!nav.previousElementSibling && nav.previousElementSibling.offsetHeight > 0;
@@ -803,12 +804,17 @@
         checks['kaarten: staan na het binnenkomen schoon'] = reduced || (!first.style.opacity && !first.style.transform && !first.style.filter) || getComputedStyle(first).opacity === '0';
         // Hover op de niet-actieve link van de navigatie (alleen met muis)
         var link = nav.querySelector('a:not(.w--current)'), hovers = matchMedia('(hover: hover)').matches;
+        var tab = document.querySelector('[data-a-tab][aria-selected="false"]');
+        tab.dispatchEvent(new MouseEvent('mouseenter'));
         link.dispatchEvent(new MouseEvent('mouseenter'));
         setTimeout(function () {
           checks['subnav: hover maakt de tekst donker'] = !hovers || getComputedStyle(link).opacity === '1';
+          checks['tabs: hover op een niet-actieve tab maakt de tekst donker'] = !hovers || getComputedStyle(tab).opacity === '1';
+          tab.dispatchEvent(new MouseEvent('mouseleave'));
           link.dispatchEvent(new MouseEvent('mouseleave'));
           setTimeout(function () {
             checks['subnav: na de hover terug naar de class'] = getComputedStyle(link).opacity === '0.3' && !link.style.opacity;
+            checks['tabs: na de hover weer vervaagd'] = getComputedStyle(tab).opacity === '0.3';
             done();
           }, 400);
         }, 400);
