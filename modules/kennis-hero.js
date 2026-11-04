@@ -101,6 +101,8 @@ export function init(container, a) {
       // Twee meetstappen ruimte: de lijn start en eindigt zo buiten beeld, anders springt het laatste stuk erbij
       first = Math.max(0, first - 2 / 240);
       last = Math.min(1, last + 2 / 240);
+      // modules/overgang.js laat vanaf hier de staart uitlopen
+      path._range = [first, last];
       path.setAttribute('pathLength', '1');
       path.style.strokeDasharray = '1';
       path.style.strokeDashoffset = 1 - first;

@@ -6,6 +6,9 @@
    staan (site.js zet hem buiten de container, in body); de footer gaat mee, want die verschilt per pagina.
    Gaat de overgang van een pagina met de kennisnavigatie naar een andere, dan blijft die balk staan en schuift de pil naar de nieuwe
    link, met de beweging van de tabs op de Home (keepSubnav).
+   De gele randen in de hero lopen dan uit: de staart rijdt door naar het einde, en daarna tekent de nieuwe pagina zijn randen in
+   (keepLines). Bij elke overgang naar een kennispagina blijven de randen verborgen tot de intro ze tekent, anders staan ze er
+   tijdens het opkomen al helemaal en verspringen ze.
    Tijdens de overgang staat de nieuwe pagina vast bovenin. Daarom verbergt site.js eerst wat binnenkomt (site.load) en starten de
    modules pas als de oude pagina weg is (run), terwijl de nieuwe nog opkomt: dan kloppen de maten en de scrollpositie. Laadt Barba
    niet, of gaat er iets mis, dan laadt de link gewoon de pagina. */
@@ -128,6 +131,29 @@ export function init(site) {
     });
   }
 
+  /* Een kopie van de randen staat boven de vervagende pagina, zonder vulling, en de staart rijdt naar het einde van het stuk dat
+     in beeld is. Was de lijn nog aan het tekenen, dan rijdt zijn kop ook door tot het einde. */
+  function keepLines(current) {
+    var box = current.querySelector('.hero-kennis_background'), rect = box && box.getBoundingClientRect();
+    if (!rect || rect.bottom <= 0) return;
+    var ghost = box.cloneNode(true), copies = ghost.querySelectorAll('path');
+    ghost.style.cssText = 'position: fixed; left: ' + rect.left + 'px; top: ' + rect.top + 'px; width: ' + rect.width + 'px; height: ' + rect.height + 'px; z-index: 49; pointer-events: none;';
+    [].forEach.call(box.querySelectorAll('path'), function (path, i) {
+      var copy = copies[i], range = path._range || [0, 1], line = { tail: range[0], head: path.hasAttribute('pathLength') ? 1 - parseFloat(path.style.strokeDashoffset) : range[1] };
+      function draw() { copy.style.strokeDasharray = '0 ' + line.tail + ' ' + (line.head - line.tail) + ' 2'; }
+      path.style.stroke = 'none';
+      copy.style.fill = 'none';
+      copy.style.strokeDashoffset = '0';
+      copy.setAttribute('pathLength', '1');
+      draw();
+      gsap.to(line, { tail: range[1], head: range[1], duration: 0.8, ease: 'power2.inOut', onUpdate: draw, onComplete: function () { ghost.remove(); } });
+    });
+    document.body.appendChild(ghost);
+  }
+  function setLines(root, stroke) {
+    if (!reduce.matches) [].forEach.call(root.querySelectorAll('.hero-kennis_background path'), function (path) { path.style.stroke = stroke; });
+  }
+
   // De oude pagina is weg: de nieuwe in de gewone stroom en op zijn scrollpositie, en nu pas de modules
   function land(data) {
     var next = data.next.container, lenis = site.lenis;
@@ -136,6 +162,7 @@ export function init(site) {
     stopForms();
     if (lenis) lenis.resize();
     site.jumpTo(0);
+    setLines(next, '');
     run();
     startForms(next);
     if (lenis) lenis.resize();
@@ -186,6 +213,7 @@ export function init(site) {
           // Niet bij direct wisselen, en niet als de nieuwe pagina op een eigen scrollpositie begint: dan zweeft de balk daar al
           var back = data.trigger === 'back' || data.trigger === 'forward', fresh = data.next.container.querySelector('[data-a-subnav]');
           if (fresh && data.current.container.querySelector('[data-a-subnav]') && !reduce.matches && !data.trigger.hash && !(back && scrolls[data.next.url.href.split('#')[0]] > 8)) fresh.setAttribute('data-a-kept', 'true');
+          setLines(data.next.container, 'none');
           return site.load(data.next.container).then(function (fn) { run = fn; });
         },
         // Bovenin, onder de nav; de oude pagina blijft staan waar hij staat, zodat sticky blijft kloppen
@@ -193,7 +221,7 @@ export function init(site) {
           // Even breed als in de gewone stroom: met een zichtbare scrollbalk zou de pagina anders verspringen bij het landen
           gsap.set(data.next.container, { position: 'fixed', top: nav.getBoundingClientRect().height, left: 0, width: document.documentElement.clientWidth });
           var fresh = data.next.container.querySelector('[data-a-kept]');
-          if (fresh) keepSubnav(data.current.container.querySelector('[data-a-subnav]'), fresh);
+          if (fresh) { keepSubnav(data.current.container.querySelector('[data-a-subnav]'), fresh); keepLines(data.current.container); }
         },
         leave: function (data) { return runPageLeaveAnimation(data); },
         enter: function (data) { return runPageEnterAnimation(data.next.container); }
