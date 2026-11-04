@@ -1,4 +1,4 @@
-/* Afix site.js v0.73: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.74: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1711,6 +1711,9 @@
         var p = path.getPointAtLength(total * i / 240), x = m.a * p.x + m.c * p.y + m.e, y = m.b * p.x + m.d * p.y + m.f;
         if (x >= 0 && x <= size.width && y >= 0 && y <= size.height) { first = Math.min(first, i / 240); last = Math.max(last, i / 240); }
       }
+      // Twee meetstappen ruimte: de lijn start en eindigt zo buiten beeld, anders springt het laatste stuk erbij
+      first = Math.max(0, first - 2 / 240);
+      last = Math.min(1, last + 2 / 240);
       path.setAttribute('pathLength', '1');
       path.style.strokeDasharray = '1';
       path.style.strokeDashoffset = 1 - first;
