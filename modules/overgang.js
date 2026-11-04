@@ -160,6 +160,9 @@ export function init(site) {
     var barba = window.barba;
     document.body.setAttribute('data-barba', 'wrapper');
     barba.dom.getContainer = function (scope) { return (scope || document).querySelector('.page-wrapper'); };
+    // Barba telt een overgang pas als lopend als de pagina is opgehaald; een tweede klik op traag netwerk zou er een tweede starten
+    var page = barba.page;
+    barba.page = function () { barba.transitions.isRunning = true; return page.apply(barba, arguments); };
     // De nav staat buiten de container en boven de pagina's
     document.body.insertBefore(nav, wrapper);
     // Terug en vooruit zetten we zelf de scrollpositie; bij herladen en buiten de site doet de browser het weer
