@@ -1,4 +1,4 @@
-/* Afix site.js v0.47: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.48: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -253,7 +253,6 @@
           if (!card) gsap.delayedCall(0.5 * t, function () { if (active) return; if (p.title) p.title.style.width = ''; if (p.link) { p.link.style.overflow = ''; p.link.style.position = ''; } });
           var on = p.card === card, dim = card && !on;
           gsap.to(p.card, { flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : p.rest.bg, duration: 0.5 * t, ease: 'power3.out', overwrite: true, onComplete: card ? null : clear(p.card, 'flexGrow,backgroundColor') });
-          p.inks.forEach(function (el, k) { gsap.to(el, { color: on ? contrast : p.rest.ink[k], duration: 0.35 * t, ease: 'power2.out', overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }); });
           if (p.num) gsap.to(p.num, { opacity: on ? 0 : dim ? 0.44 : 1, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: card ? null : clear(p.num, 'opacity') });
           if (p.title && p.num) {
             // De titel schuift naar de plek van het nummer (bovenaan de kaart)
@@ -269,6 +268,8 @@
               gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
             }
           }
+          // Na de tekst-tween: die stopt met overwrite true alles wat er dan al op de tekst loopt, dus ook de kleur
+          p.inks.forEach(function (el, k) { gsap.to(el, { color: on ? contrast : p.rest.ink[k], duration: 0.35 * t, ease: 'power2.out', overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }); });
         });
       }
       parts.forEach(function (p) {

@@ -303,6 +303,7 @@
     setTimeout(function () {
       var c = cards[0], shown = getComputedStyle(c).backgroundColor === 'rgb(249, 202, 0)' && c.offsetWidth > cards[1].offsetWidth * 1.5 && getComputedStyle(c.querySelector('.hero-card_detail')).display === 'flex' && getComputedStyle(c.querySelector('.hero-card_detail')).opacity === '1' && getComputedStyle(c.querySelector('.hero-card_image-left')).opacity === '1' && getComputedStyle(c.querySelector('.hero-card_title')).color === 'rgb(39, 51, 39)' && getComputedStyle(cards[1].querySelector('.hero-card_title')).opacity === '0.34';
       checks['hero: uitdaging groeit, wordt geel, toont tekst en foto'] = desktop ? shown : !shown;
+      checks['hero: tekst kleurt mee met de titel'] = !desktop || getComputedStyle(c.querySelector('.hero-card_detail')).color === getComputedStyle(c.querySelector('.hero-card_title')).color;
       // Wisselen: de nieuwe foto ligt bovenop en de oude blijft dekkend tot hij bedekt is (stapel, geen twee halve foto's)
       cards[1].dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
       setTimeout(function () {
