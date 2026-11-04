@@ -1,4 +1,4 @@
-/* Afix site.js v0.66: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.67: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -891,9 +891,10 @@
     return { svg: svg, paths: paths };
   }
 
-  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin). Timing en formules zijn van het prototype (bgLine en
-     size()): terwijl de achtergrondvorm vervaagt tekent de lijn zich door de hero, en daarna langzaam verder terwijl
-     Expertises vaststaat. Als Werk eroverheen schuift, vervaagt hij. Het pad wijkt af (keuze van de gebruiker): in de hero
+  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin). De uiteinden en het vervagen zijn van het prototype (bgLine en
+     size()): terwijl de achtergrondvorm vervaagt tekent de lijn zich, en als Werk eroverheen schuift vervaagt hij. Twee
+     afwijkingen, keuze van de gebruiker. De lijn tekent in een keer door, zonder pauze op de grens, en is af als Expertises
+     bovenaan komt: dan loopt hij in beeld door tot de onderkant van het scherm. En in de hero
      volgt de lijn de rand van de vorm linksonder (hero-home_background, dezelfde coördinaten en schaal als de svg daar). Net
      boven de onderkant van de hero laat hij de rand los en buigt hij naar de eindpunten van het prototype in Expertises,
      rechts van de kop langs. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde pad in twee
@@ -909,7 +910,7 @@
     withGsap(function (gsap) {
       var inHero = lineLayer(1, 'position: absolute; left: 0; width: 100%; pointer-events: none; z-index: -1;');
       var inExp = lineLayer(1, 'display: block; position: sticky; top: 0; width: 100%; pointer-events: none; z-index: -1;');
-      var paths = [inHero.paths[0], inExp.paths[0]], H = 1, stack = 1, share = 0.5, width = 0, ticking = false, shown = '';
+      var paths = [inHero.paths[0], inExp.paths[0]], H = 1, stack = 1, width = 0, ticking = false, shown = '';
       hero.appendChild(inHero.svg);
       // Als eerste kind: sticky begint op zijn plek in de pagina, dus onder de inhoud zou hij pas later vast gaan staan
       exp.insertBefore(inExp.svg, exp.firstChild);
@@ -932,15 +933,11 @@
         inExp.svg.style.height = H + 'px';
         inExp.svg.style.marginBottom = -H + 'px';
         inExp.svg.setAttribute('viewBox', '0 ' + stack + ' ' + W + ' ' + H);
-        // Welk deel van de lijn in de hero ligt: dat deel verschijnt terwijl de vorm vervaagt, de rest tijdens Expertises
-        var length = paths[0].getTotalLength(), lo = 0, hi = length;
-        for (var k = 0; k < 24; k++) { var mid = (lo + hi) / 2; if (paths[0].getPointAtLength(mid).y < stack) lo = mid; else hi = mid; }
-        share = lo / length;
       }
       function update() {
         ticking = false;
         var still = reduce.matches, s = Math.max(0, window.scrollY), top = next.getBoundingClientRect().top;
-        var drawn = still ? 1 : s < stack ? share * easeInOut(clamp((s - stack * 0.04) / (stack * 0.6), 0, 1)) : share + (1 - share) * clamp((s - stack) / Math.max(1, top + s - stack - H), 0, 1);
+        var drawn = still ? 1 : easeInOut(clamp((s - stack * 0.04) / (stack * 0.96), 0, 1));
         var opacity = still ? 1 : clamp(clamp(s / (stack * 0.55), 0, 1) * 1.6, 0, 1) * (1 - easeInOut(clamp((H - top) / H, 0, 1)));
         var state = drawn.toFixed(4) + opacity.toFixed(3);
         if (state === shown) return;

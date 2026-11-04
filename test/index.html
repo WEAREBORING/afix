@@ -647,9 +647,9 @@
             var mid = off(b);
             jump(next.getBoundingClientRect().top + window.scrollY + 10, function () {
               checks['lijn: nog niet zichtbaar bovenaan'] = start[0] === 1 && start[1] === 0;
-              checks['lijn: tekent zich door de hero, zichtbaar als de vorm vervaagt'] = half > 0 && half < 1 && fade === 1 && rest < half;
+              checks['lijn: tekent zich door de hero, zichtbaar als de vorm vervaagt'] = half > 0 && half < 1 && fade === 1;
               checks['lijn: staat vast zodra Expertises bovenaan komt'] = Math.abs(pinned) < 2;
-              checks['lijn: tekent verder tijdens Expertises en is af als Werk komt'] = mid > 0 && mid < rest && off(b) === 0;
+              checks['lijn: is af zodra Expertises bovenaan komt, zonder pauze ertussen'] = rest < 0.01 && mid === 0 && half < 0.9;
               checks['lijn: vervaagt als Werk eroverheen schuift'] = op(b) === 0;
               var wt = werk.getBoundingClientRect().top + window.scrollY, kt = kennis.getBoundingClientRect().top + window.scrollY;
               jump(wt - H, function () {
