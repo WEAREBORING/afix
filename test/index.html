@@ -168,6 +168,7 @@
 <div style="height: 10rem"></div>
 
 <section id="dt">
+  <div data-a-detail id="dt-detail"><div class="kennis-detail_header"><div id="dt-crumb">Kruimelpad</div><h1 id="dt-h1" style="font-size: 1rem">Titel detail</h1></div><div class="kennis-detail_image" id="dt-photo" style="height: 2rem"></div></div>
   <span data-a-date id="dt-date">January 29, 2026</span>
   <input type="hidden" data-a-date id="dt-date-input" value="November 26, 2026">
   <div><form id="dt-form" onsubmit="return false"><button type="submit" data-wait="Versturen..." id="dt-submit"><span>Aanmelden</span><div class="button_icon" id="dt-icon" style="width: 1rem; height: 1rem"><svg id="dt-arrow"></svg></div></button></form><div class="w-form-fail" id="dt-fail" style="display: none"></div></div>
@@ -175,7 +176,7 @@
   <div><aside data-a-toc id="dt-none"><div id="dt-none-block"><div data-a-toc-list><a href="#">Kop 2</a></div></div></aside><div data-a-toc-content><p>Geen koppen</p></div></div>
   <div style="display: flex">
     <aside data-a-toc id="dt-aside" style="position: sticky; top: 20px; align-self: flex-start; width: 10rem"><div data-a-toc-list id="dt-list"><a href="#" style="opacity: 0.2">Kop 2</a></div></aside>
-    <div data-a-toc-content id="dt-content"><h2>Eerste kop</h2><div style="height: 120vh"></div><h2>Caf&eacute; &amp; koffie</h2><div style="height: 120vh"></div><h2>Eerste kop</h2><div style="height: 10vh"></div></div>
+    <div data-a-toc-content id="dt-content"><h2>Eerste kop</h2><div style="height: 120vh"></div><div class="kennis-gerelateerd_header" id="dt-related">Gerelateerd</div><h2>Caf&eacute; &amp; koffie</h2><div style="height: 120vh"></div><h2>Eerste kop</h2><div style="height: 10vh"></div></div>
   </div>
   <div style="height: 120vh"></div>
 </section>
@@ -842,6 +843,7 @@
     checks['detail: inhoudsopgave een link per Kop 2, zonder voorbeeld'] = links.length === 3 && links[1].textContent === 'Café & koffie';
     checks['detail: koppen krijgen een uniek anker'] = heads[0].id === 'eerste-kop' && heads[1].id === 'cafe-koffie' && heads[2].id === 'eerste-kop-2' && links[2].getAttribute('href') === '#eerste-kop-2';
     checks['detail: zonder koppen geen inhoudsopgave'] = document.getElementById('dt-none-block').style.display === 'none';
+    checks['detail: kop en foto zijn na het binnenkomen zichtbaar, zonder resten'] = ['dt-crumb', 'dt-h1', 'dt-photo'].every(function (id) { var el = document.getElementById(id); return getComputedStyle(el).opacity === '1' && !el.style.transform && !el.style.filter; });
     var share = decodeURIComponent(document.getElementById('dt-wa').href);
     checks['detail: delen met titel en adres van de pagina'] = document.getElementById('dt-li').href.indexOf('linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(location.origin + location.pathname)) > 0 && share.indexOf('wa.me/?text=' + document.querySelector('h1').textContent.trim() + ' ') > 0;
     var submit = document.getElementById('dt-submit'), icon = document.getElementById('dt-icon'), fail = document.getElementById('dt-fail');
@@ -858,6 +860,7 @@
       checks['detail: aan het eind van de tekst is de laatste kop actief'] = links[2].getAttribute('aria-current') === 'true';
       links[2].click();
       setTimeout(function () {
+        checks['detail: Gerelateerd is na het binnenkomen zichtbaar, zonder resten'] = (function (el) { return getComputedStyle(el).opacity === '1' && !el.style.transform && !el.style.filter; })(document.getElementById('dt-related'));
         checks['detail: klik scrollt tot onder de nav, met het anker in de url'] = location.hash === '#eerste-kop-2' && Math.abs(heads[2].getBoundingClientRect().top - 20) < 3;
         history.replaceState(null, '', location.pathname);
         done();

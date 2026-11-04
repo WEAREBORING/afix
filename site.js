@@ -1,4 +1,4 @@
-/* Afix site.js v0.81: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.82: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -839,10 +839,10 @@
     });
   });
 
-  /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis komen een keer
+  /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis en Gerelateerd komen een keer
      binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
      fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
-  var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header';
+  var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper';
   if (!reduce.matches && document.querySelector(arrivals)) withGsap(function (gsap) {
     each(arrivals, function (el) {
       gsap.set(el, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
@@ -1913,6 +1913,22 @@
       // Wachten op de fonts (hooguit 0,8 s), anders verspringen de regels halverwege
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
       setTimeout(start, 800);
+    });
+  });
+
+  /* data-a-detail (kennisdetailpagina's): bij het laden komen het kruimelpad, de titel, de labels, de intro en de foto binnen
+     met de blur-fade en timing van data-a-page-hero. Reduced motion of geen GSAP: gewoon zichtbaar. */
+  each('[data-a-detail]', function (comp) {
+    if (reduce.matches) return;
+    var intro = [].slice.call(comp.querySelectorAll('.kennis-detail_header > *, .kennis-detail_intro, .kennis-detail_image'));
+    function show() { intro.forEach(function (el) { el.style.opacity = ''; }); }
+    intro.forEach(function (el) { el.style.opacity = '0'; });
+    var fallback = setTimeout(show, 3000);
+    withGsap(function (gsap) {
+      clearTimeout(fallback);
+      intro.forEach(function (el, i) {
+        gsap.fromTo(el, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'), withBlur({ opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', delay: 0.1 + i * 0.09, clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
+      });
     });
   });
 
