@@ -1,4 +1,4 @@
-/* Afix site.js v0.60: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.61: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -624,7 +624,7 @@
      zoals Werk over Expertises (keuze van de gebruiker, niet in het prototype); de foto vervaagt daarbij naar de donkere
      achtergrond van de sectie. site.js zet daarvoor kernwaarden_team
      sticky, maakt de wrapper een schermhoogte hoger en geeft Reviews een negatieve marge. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
-     beweegt daarin langzamer dan de scroll, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
+     schuift daarin omhoog, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
      de maat van het vlak, dus er is geen extra element nodig. Reduced motion en zonder site.js: de foto uit de class. */
   each('[data-a-team]', function (team) {
     var img = team.querySelector('img');
@@ -639,7 +639,7 @@
         ticking = false;
         // Waar het vlak zou staan zonder vastzetten: de wrapper eindigt twee schermhoogtes onder die plek
         var top = comp.getBoundingClientRect().bottom - 2 * H, g = clamp((H - top) / H, 0, 1);
-        var h = sh + (H - sh) * g, extra = h * 0.15, o = extra * (1 - clamp((H - top) / (2 * H), 0, 1));
+        var h = sh + (H - sh) * g, extra = h * 0.15, o = extra * clamp((H - top) / (2 * H), 0, 1);
         gsap.set(img, {
           left: (W - sw) / 2 * (1 - g),
           top: Math.min(H * 0.06, 56) * (1 - g) - o,
@@ -740,7 +740,9 @@
   });
 
   /* Gele lijnen in Reviews (section_reviews, zoals het prototype): een horizontale lijn door de kaarten (reviews_stack) en
-     een diagonale rechts, die zichzelf tekenen met de scroll terwijl de sectie binnenkomt. site.js maakt de svg zelf, want
+     een diagonale rechts, die zichzelf tekenen met de scroll. Later dan het prototype (keuze van de gebruiker): ze starten
+     als de bovenkant van de sectie op 55% van de schermhoogte staat en zijn klaar op -35%, anders gebeurt het meeste
+     onder de foto en buiten beeld. site.js maakt de svg zelf, want
      de lijnen worden toch uit de maat van de sectie berekend. Reduced motion: direct getekend. */
   each('.section_reviews', function (section) {
     var stack = section.querySelector('.reviews_stack');
@@ -769,7 +771,7 @@
       }
       function update() {
         ticking = false;
-        var H = window.innerHeight, L = reduce.matches ? 1 : clamp((H - section.getBoundingClientRect().top) / (H * 1.1), 0, 1);
+        var H = window.innerHeight, L = reduce.matches ? 1 : clamp((H * 0.55 - section.getBoundingClientRect().top) / (H * 0.9), 0, 1);
         gsap.set(lines[0], { strokeDashoffset: 1 - easeInOut(L) });
         gsap.set(lines[1], { strokeDashoffset: 1 - easeInOut(clamp(L * 1.2 - 0.2, 0, 1)) });
       }
