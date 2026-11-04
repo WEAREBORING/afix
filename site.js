@@ -1,4 +1,4 @@
-/* Afix site.js v0.84: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.85: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -190,7 +190,7 @@ var modules = [
 ];
 // Wat binnenkomt staat meteen verborgen, nog voor de modules en GSAP er zijn; start() haalt dit weg vlak voordat de modules het overnemen
 var hideFirst = arrivals + ', [data-a-hero] .hero-home_heading .tag, [data-a-hero] h1 > span, [data-a-hero] .award, [data-a-hero] .hero-home_cards, ' +
-  '[data-a-page-hero] .tag, [data-a-page-hero] h1 span, [data-a-page-hero] [data-a-subnav], [data-a-detail] .kennis-detail_header > *, ' +
+  '[data-a-page-hero] .tag, [data-a-page-hero] h1 span, [data-a-page-hero] [data-a-subnav]:not([data-a-kept]), [data-a-detail] .kennis-detail_header > *, ' +
   '[data-a-detail] .kennis-detail_intro, [data-a-detail] .kennis-detail_image, [data-a-filter-list] > *';
 // Lokaal de gewone bestanden, op jsDelivr de .min-bestanden (die maakt jsDelivr pas bij het eerste verzoek: warm ze op)
 var dir = new URL('modules/', import.meta.url).href, ext = /\.min\.js/.test(import.meta.url) ? '.min.js' : '.js';

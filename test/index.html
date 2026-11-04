@@ -39,7 +39,8 @@
   .case-card_tags, .case-card_text { opacity: 0; }
   .kennis-rij_list { display: grid; grid-auto-flow: column; grid-auto-columns: 12rem; column-gap: 1rem; overflow-x: auto; width: 20rem; max-width: 100%; }
   .kennis-filter_panel { display: none; }
-  #kn-nav { display: flex; overflow: auto; width: 10rem; max-width: 100%; }
+  #kn-nav { position: relative; display: flex; overflow: auto; width: 10rem; max-width: 100%; }
+  .kennis_tab-pill { position: absolute; top: 0; bottom: 0; left: 0; }
   #kn-nav a { opacity: 0.3; }
   #kn-nav a.w--current { opacity: 1; }
   .pinrow { display: flex; gap: 1rem; overflow: auto hidden; width: 30rem; }
@@ -840,7 +841,7 @@
       checks['subnav: gescrold staat hij onderaan vast, met een houder op zijn plek'] = getComputedStyle(nav).position === 'fixed' && !!nav.previousElementSibling && nav.previousElementSibling.offsetHeight > 0;
       window.scrollTo(0, 0);
       setTimeout(function () {
-        checks['subnav: bovenaan weer op zijn plek, zonder inline stijl of houder'] = getComputedStyle(nav).position === 'static' && !nav.getAttribute('style') && !nav.previousElementSibling;
+        checks['subnav: bovenaan weer op zijn plek, zonder inline stijl of houder'] = getComputedStyle(nav).position === 'relative' && !nav.getAttribute('style') && !nav.previousElementSibling;
         var tag = document.getElementById('kn-tag'), span = document.querySelector('#kn-h1 span'), path = document.querySelector('.hero-kennis_background path'), hn = document.getElementById('kn-hero-nav');
         checks['pagina-hero: na de intro schoon en zichtbaar'] = !tag.style.opacity && !tag.style.filter && !span.style.top && !span.style.position && getComputedStyle(span).opacity === '1' && getComputedStyle(hn).opacity === '1';
         checks['pagina-hero: lijn is klaar en heeft geen streepjes meer'] = !path.getAttribute('pathLength') && !path.style.strokeDasharray;
@@ -903,6 +904,8 @@
   // opruimen, nu met een oog op de timers
   async function cleanupChecks() {
     var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'overgang'];
+    var navCurrent = document.querySelector('#kn-nav .w--current'), navPill = document.querySelector('#kn-nav .kennis_tab-pill');
+    checks['kennisnavigatie: pil staat op de huidige link'] = !!navPill && Math.abs(gsap.getProperty(navPill, 'x') - navCurrent.offsetLeft) < 1 && Math.abs(navPill.offsetWidth - navCurrent.offsetWidth) < 1 && navCurrent.style.backgroundColor === 'transparent';
     var loaded = await Promise.all(names.map(function (n) { return import('../modules/' + n + '.js'); }));
     checks['opruimen: elke module exporteert init'] = loaded.every(function (m) { return typeof m.init === 'function'; });
     function leftovers(label) {

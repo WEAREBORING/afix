@@ -4,6 +4,8 @@
    (hero, kennis-hero, detail): dan brengt die de kop binnen, zodat hij niet twee keer komt. Reduced motion wisselt direct.
    Zonder Webflow-wijziging: body is de wrapper en page-wrapper de container, dus elke nieuwe pagina doet vanzelf mee. De nav blijft
    staan (site.js zet hem buiten de container, in body); de footer gaat mee, want die verschilt per pagina.
+   Gaat de overgang van een pagina met de kennisnavigatie naar een andere, dan blijft die balk staan en schuift de pil naar de nieuwe
+   link, met de beweging van de tabs op de Home (keepSubnav).
    Tijdens de overgang staat de nieuwe pagina vast bovenin. Daarom verbergt site.js eerst wat binnenkomt (site.load) en starten de
    modules pas als de oude pagina weg is (run), terwijl de nieuwe nog opkomt: dan kloppen de maten en de scrollpositie. Laadt Barba
    niet, of gaat er iets mis, dan laadt de link gewoon de pagina. */
@@ -101,10 +103,34 @@ export function init(site) {
     return new Promise(function (resolve) { tl.call(resolve, null, 'pageReady'); });
   }
 
+  /* De kennisnavigatie staat op beide pagina's: een kopie van de balk blijft boven de pagina's staan en de echte balken zijn
+     onzichtbaar. De pil schuift naar de nieuwe link en de balk naar zijn plek in de nieuwe pagina (zweefde hij onderin, dan
+     komt hij mee omhoog); daarna neemt de echte balk het over. */
+  function keepSubnav(old, fresh) {
+    var from = old.getBoundingClientRect(), to = fresh.getBoundingClientRect(), left = old.scrollLeft;
+    var ghost = old.cloneNode(true), links = [].slice.call(ghost.querySelectorAll('a')), pill = ghost.querySelector('.kennis_tab-pill');
+    var target = links[[].indexOf.call(fresh.querySelectorAll('a'), fresh.querySelector('.w--current'))];
+    if (!pill || !target) return fresh.removeAttribute('data-a-kept');
+    var on = getComputedStyle(old.querySelector('.w--current')), off = getComputedStyle(old.querySelector('a:not(.w--current)'));
+    var ink = { on: { color: on.color, opacity: on.opacity }, off: { color: off.color, opacity: off.opacity } };
+    ghost.removeAttribute('data-a-subnav');
+    ghost.style.cssText = 'position: fixed; left: ' + from.left + 'px; top: ' + from.top + 'px; width: ' + from.width + 'px; margin: 0; max-width: none; z-index: 50;';
+    old.style.visibility = fresh.style.visibility = 'hidden';
+    document.body.appendChild(ghost);
+    ghost.scrollLeft = left;
+    gsap.to(pill, { x: target.offsetLeft, width: target.offsetWidth, duration: 0.45, ease: 'power3.out' });
+    links.forEach(function (link) { gsap.to(link, Object.assign({ duration: 0.3, ease: 'power2.out' }, link === target ? ink.on : ink.off)); });
+    gsap.to(ghost, { scrollLeft: target.offsetLeft - (to.width - target.offsetWidth) / 2, duration: 0.45, ease: 'power3.out' });
+    gsap.to(ghost, {
+      x: to.left - from.left, y: to.top - from.top, width: to.width, duration: 0.75, ease: 'power3.inOut',
+      onComplete: function () { fresh.style.visibility = ''; fresh.removeAttribute('data-a-kept'); ghost.remove(); }
+    });
+  }
+
   // De oude pagina is weg: de nieuwe in de gewone stroom en op zijn scrollpositie, en nu pas de modules
   function land(data) {
     var next = data.next.container, lenis = site.lenis;
-    gsap.set(next, { clearProps: 'position,top,left,right' });
+    gsap.set(next, { clearProps: 'position,top,left,width' });
     site.stop();
     stopForms();
     if (lenis) lenis.resize();
@@ -153,10 +179,18 @@ export function init(site) {
           syncNav(nav, data.next.container);
           site.resetNav();
           if (site.lenis) site.lenis.stop();
+          // Niet bij direct wisselen, en niet als de nieuwe pagina op een eigen scrollpositie begint: dan zweeft de balk daar al
+          var back = data.trigger === 'back' || data.trigger === 'forward', fresh = data.next.container.querySelector('[data-a-subnav]');
+          if (fresh && data.current.container.querySelector('[data-a-subnav]') && !reduce.matches && !data.trigger.hash && !(back && scrolls[data.next.url.href.split('#')[0]] > 8)) fresh.setAttribute('data-a-kept', 'true');
           return site.load(data.next.container).then(function (fn) { run = fn; });
         },
         // Bovenin, onder de nav; de oude pagina blijft staan waar hij staat, zodat sticky blijft kloppen
-        beforeEnter: function (data) { gsap.set(data.next.container, { position: 'fixed', top: nav.offsetHeight, left: 0, right: 0 }); },
+        beforeEnter: function (data) {
+          // Even breed als in de gewone stroom: met een zichtbare scrollbalk zou de pagina anders verspringen bij het landen
+          gsap.set(data.next.container, { position: 'fixed', top: nav.getBoundingClientRect().height, left: 0, width: document.documentElement.clientWidth });
+          var fresh = data.next.container.querySelector('[data-a-kept]');
+          if (fresh) keepSubnav(data.current.container.querySelector('[data-a-subnav]'), fresh);
+        },
         leave: function (data) { return runPageLeaveAnimation(data); },
         enter: function (data) { return runPageEnterAnimation(data.next.container); }
       }]

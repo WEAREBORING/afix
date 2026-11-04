@@ -4,7 +4,9 @@ export function init(container, a) {
 
   /* data-a-subnav (Section - Hero Kennis): de secundaire navigatie (Figma 935:7556). Zodra je scrolt schuift hij van de hero
      naar onderaan het scherm, bovenaan de pagina weer terug; bij de footer schuift hij omlaag uit beeld. Een lege houder
-     bewaart zijn plek in de hero. Past de balk niet (telefoon), dan scrolt hij zijwaarts met de huidige link in het midden. */
+     bewaart zijn plek in de hero. Past de balk niet (telefoon), dan scrolt hij zijwaarts met de huidige link in het midden.
+     De donkere vorm van de huidige link is een eigen pil (kennis_tab-pill, zoals de tabs op de Home), als laatste kind: zo kan
+     modules/overgang.js hem bij een paginaovergang naar de nieuwe link schuiven. Zonder GSAP doet de class het zelf. */
   each('[data-a-subnav]', function (nav) {
     var current = nav.querySelector('.w--current');
     if (current) nav.scrollLeft = current.offsetLeft - (nav.clientWidth - current.offsetWidth) / 2;
@@ -14,6 +16,20 @@ export function init(container, a) {
       var move = { p: 0, drop: 0 }, floating = false, atFooter = false, dropped = false, fixed = false, dx = 0, dy = 0, start;
       var fixedStyle = { position: 'fixed', left: '0', right: '0', bottom: 'max(1rem, env(safe-area-inset-bottom))', zIndex: '50', width: 'fit-content', margin: '0 auto', maxWidth: 'calc(100% - 2 * var(--_layout---space--page-x))' };
       holder.setAttribute('aria-hidden', 'true');
+      if (current) {
+        var pill = document.createElement('div');
+        pill.className = 'kennis_tab-pill';
+        pill.setAttribute('aria-hidden', 'true');
+        nav.appendChild(pill);
+        undo(function () { pill.remove(); });
+        [].forEach.call(nav.querySelectorAll('a'), function (link) { link.style.position = 'relative'; link.style.zIndex = '1'; });
+        current.style.backgroundColor = 'transparent';
+        var placePill = function () { gsap.set(pill, { x: current.offsetLeft, width: current.offsetWidth }); };
+        placePill();
+        listen(window, 'resize', placePill);
+        a.loaded(placePill);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(placePill);
+      }
       function time(t) { return reduce.matches ? 0 : t; }
       // Hover op de andere links: de vervaagde tekst wordt helemaal donker. Daarna neemt de class het weer over.
       var mouse = window.matchMedia('(hover: hover)');
@@ -72,7 +88,8 @@ export function init(container, a) {
      beeld is telt: de rest loopt ver buiten de hero. De navigatie vervaagt alleen, want data-a-subnav beweegt hem. */
   each('[data-a-page-hero]', function (hero) {
     if (reduce.matches) return;
-    var nav = hero.querySelector('[data-a-subnav]'), spans = [].slice.call(hero.querySelectorAll('h1 span'));
+    // data-a-kept: de balk bleef bij een paginaovergang staan en komt dus niet binnen
+    var nav = hero.querySelector('[data-a-subnav]:not([data-a-kept])'), spans = [].slice.call(hero.querySelectorAll('h1 span'));
     var intro = [hero.querySelector('.tag')].concat(spans, [nav]).filter(Boolean);
     var box = hero.querySelector('.hero-kennis_background svg');
     var lines = box ? [].map.call(box.querySelectorAll('path'), function (path) {

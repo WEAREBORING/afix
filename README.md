@@ -50,6 +50,7 @@ tag=vX.Y.Z; for f in site.min.js site.min.css $(cd modules && ls *.js | sed 's/\
 
 - **De nav staat buiten de container.** `overgang.js` zet hem bij de start in `body`. De footer gaat mee met de pagina, want die verschilt per pagina.
 - **Volgorde van een overgang:** de nieuwe html ophalen, head en nav bijwerken, `load(container)` verbergt wat binnenkomt en laadt de modules, de overvloeier, en zodra de oude pagina weg is `stop()` en de teruggegeven `run()`, terwijl de nieuwe nog opkomt. Een module die meet, meet dus altijd in de echte stand.
+- **Kennisnavigatie:** staat hij op beide pagina's, dan blijft hij staan en schuift de pil (`kennis_tab-pill`, gemaakt door `kennis-hero.js`) naar de nieuwe link. `overgang.js` gebruikt daarvoor een kopie van de balk; de echte balk heeft dan `data-a-kept` en komt niet binnen met de intro.
 - **`window.load` komt na een overgang niet.** Gebruik `a.loaded(fn)`: dat vuurt bij het laden, en na een overgang als de foto's in beeld er zijn.
 - **Formulieren:** `webflow.js` leest de Turnstile-sleutel maar één keer. `overgang.js` start daarom `Webflow.require('forms').ready()` opnieuw en zet de Turnstile-widget zelf in het formulier.
 - **Geen overgang op een link:** Barba slaat `target="_blank"`, `download`, andere domeinen en ctrl-klik al over. Zet `data-barba-prevent` op een link om hem over te slaan.
