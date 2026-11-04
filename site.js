@@ -1,4 +1,4 @@
-/* Afix site.js v0.36: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.37: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -286,7 +286,7 @@
         sec.style.height = '';
         stick.style.position = stick.style.top = '';
         row.style.overflowX = row.style.scrollSnapType = '';
-        if (next) ['position', 'zIndex', 'marginTop', 'borderTopLeftRadius', 'borderTopRightRadius', 'boxShadow'].forEach(function (p) { next.style[p] = ''; });
+        if (next) ['position', 'zIndex', 'marginTop', 'borderTopLeftRadius', 'borderTopRightRadius', 'boxShadow', 'clipPath'].forEach(function (p) { next.style[p] = ''; });
         gsap.killTweensOf(train);
         gsap.set(row, { clearProps: 'transform' });
         row.scrollLeft = 0;
@@ -328,8 +328,9 @@
           next.style.zIndex = '2';
           next.style.marginTop = -(h + top) + 'px';
           next.style.borderTopLeftRadius = next.style.borderTopRightRadius = 'var(--_layout---radius--l)';
-          // Negatieve spreiding: de schaduw valt alleen boven Werk, niet onderaan op de sectie erna
+          // Schaduw alleen boven Werk: negatieve spreiding houdt de zijkanten weg, de clip-path de onderkant (anders valt hij op de sectie erna)
           next.style.boxShadow = '0 -1.5rem 4rem -2.5rem rgba(0, 0, 0, 0.28)';
+          next.style.clipPath = 'inset(-6rem 0 0 0)';
         }
         update(true);
       }
