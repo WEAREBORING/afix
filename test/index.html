@@ -292,7 +292,8 @@
     }, 100);
     setTimeout(function () {
       checks['rij volgende kaart (rond)'] = atCenter(0);
-      checks['site.js lijnt uit, niet de harde snap'] = row.style.scrollSnapType === 'none' && row.style.touchAction === 'pan-y';
+      var onTouch = matchMedia('(hover: none)').matches;
+      checks['rij: muis lijnt uit met site.js, touch swipet native'] = onTouch ? row.style.scrollSnapType === 'x mandatory' && !row.style.touchAction && row.firstElementChild.style.scrollSnapAlign === 'center' : row.style.scrollSnapType === 'none' && row.style.touchAction === 'pan-y';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
         checks['rij vorige kaart (rond)'] = atCenter(4);
@@ -399,7 +400,7 @@
       to(top - (parseFloat(sec.style.height) - sec.firstElementChild.offsetHeight - H));
       setTimeout(function () {
         var endX = gsap.getProperty(row, 'x');
-        checks['pin: rij aan het eind helemaal doorgeschoven'] = Math.abs(row.scrollLeft - (row.scrollWidth - row.clientWidth)) < 3 && endX <= 1;
+        checks['pin: rij aan het eind helemaal doorgeschoven'] = row.lastElementChild.getBoundingClientRect().right <= document.documentElement.clientWidth + 2 && endX < 0;
         // De trein stopt niet: hij rijdt door terwijl de volgende sectie eroverheen schuift
         window.scrollTo(0, window.scrollY + H * 0.5);
         setTimeout(function () {
@@ -512,26 +513,23 @@
       checks['team: reduced motion de foto uit de class'] = team.style.height === '' && img.getBoundingClientRect().width === team.offsetWidth;
       return done();
     }
-    function to(top) { window.scrollTo(0, window.scrollY + team.getBoundingClientRect().top - top); }
+    // Het vlak staat vast en is geschaald: de plek komt van de wrapper, die twee schermhoogtes onder de begin van het vlak eindigt
+    function to(top) { window.scrollTo(0, window.scrollY + team.parentElement.getBoundingClientRect().bottom - 2 * H - top); }
     var sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
     // Het zichtbare vlak: de foto min wat de clip-path boven en onder wegsnijdt
     function frame() {
-      var m = img.style.clipPath.match(/inset\((.*?)(?: round (.*))?\)/), v = m[1].split(' ').map(parseFloat), b = img.getBoundingClientRect();
-      var top = v[0], bottom = v.length > 2 ? v[2] : v[0];
-      return { left: b.left, top: b.top + top, width: b.width, height: b.height - top - bottom, cut: top, radius: m[2] ? parseFloat(m[2]) : 0 };
+      var t = team.getBoundingClientRect(), b = img.getBoundingClientRect();
+      return { left: t.left, top: t.top, width: t.width, height: t.height, cut: t.top - b.top, radius: parseFloat(team.style.borderRadius) * gsap.getProperty(team, 'scaleX') };
     }
     to(H);
     setTimeout(function () {
       var a = frame();
       checks['team: begint als in het prototype'] = Math.abs(a.width - sw) < 1 && Math.abs(a.height - sw * 0.62) < 1 && Math.abs(a.left - (W - sw) / 2) < 1 && Math.abs(a.radius - 20) < 1;
-      to(H * 0.5);
+      to(0);
       setTimeout(function () {
-        var c = frame();
-        to(0);
         setTimeout(function () {
           var b = frame();
           checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && b.radius === 0;
-          checks['team: parallax, de foto schuift omhoog binnen het vlak'] = c.cut / c.height < b.cut / b.height;
           checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
           // Daarna blijft de foto staan en schuift de volgende sectie eroverheen
           var next = $('#kernwaarden').nextElementSibling;
@@ -577,7 +575,7 @@
     var H = innerHeight, start = getComputedStyle(head).opacity, filter = head.style.filter;
     window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - H);
     setTimeout(function () {
-      checks['reviews: kop start verborgen met blur'] = start === '0' && /blur/.test(filter);
+      checks['reviews: kop start verborgen, met blur behalve op touch'] = start === '0' && /blur/.test(filter) !== matchMedia('(hover: none)').matches;
       checks['reviews: lijnen nog niet getekend'] = off(0) > 0.95 && off(1) > 0.95;
       window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - H * 0.1);
       setTimeout(function () {

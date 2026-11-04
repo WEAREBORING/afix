@@ -1,9 +1,12 @@
-/* Afix site.js v0.62: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.63: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   function each(sel, fn) { [].forEach.call(document.querySelectorAll(sel), fn); }
   function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+  // Telefoon en tablet: blur op grote blokken is daar te zwaar, die animaties krijgen alleen fade en beweging
+  var touchDevice = window.matchMedia('(hover: none)');
+  function withBlur(vars, value) { if (!touchDevice.matches) vars.filter = value; return vars; }
   function num(el, attr, fallback) { var v = parseFloat(el.getAttribute(attr)); return isNaN(v) ? fallback : v; }
 
   /* Smooth scroll (hele site): Lenis, zoals het prototype (lerp 0.09, wiel 0.9). Afgesproken uitzondering op "alleen GSAP":
@@ -154,11 +157,11 @@
       // bewegen wel mee, kort na elkaar.
       var links = bar ? [].slice.call(bar.querySelectorAll('.hero-card_link')) : [];
       function from(el) {
-        if (lines.indexOf(el) > -1) return { opacity: 0, position: 'relative', top: rem(1.5), filter: 'blur(0.75rem)' };
-        return el === bar ? { opacity: 0 } : { opacity: 0, y: rem(1.5), filter: 'blur(0.75rem)' };
+        if (lines.indexOf(el) > -1) return withBlur({ opacity: 0, position: 'relative', top: rem(1.5) }, 'blur(0.75rem)');
+        return el === bar ? { opacity: 0 } : withBlur({ opacity: 0, y: rem(1.5) }, 'blur(0.75rem)');
       }
       function to(el, delay) {
-        var v = lines.indexOf(el) > -1 ? { top: 0, filter: 'blur(0rem)', clearProps: 'opacity,filter,position,top' } : el === bar ? { clearProps: 'opacity' } : { y: 0, filter: 'blur(0rem)', clearProps: 'opacity,transform,filter' };
+        var v = lines.indexOf(el) > -1 ? withBlur({ top: 0, clearProps: 'opacity,filter,position,top' }, 'blur(0rem)') : el === bar ? { clearProps: 'opacity' } : withBlur({ y: 0, clearProps: 'opacity,transform,filter' }, 'blur(0rem)');
         return Object.assign(v, { opacity: 1, duration: 1.1, ease: 'power3.out', delay: delay });
       }
       if (hidden && intro.length) {
@@ -178,7 +181,8 @@
       // Vervagen bij wegscrollen: de inhoud en de achtergrondvorm, ook het deel dat doorloopt in de volgende sectie
       // (expertises_background), want dat is dezelfde vorm
       var fading = [comp].concat([].slice.call(document.querySelectorAll('.hero-home_background, .expertises_background')));
-      var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false;
+      var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false, faded = -1;
+      if (!reduce.matches) gsap.set(fading, { willChange: 'opacity' });
       var head = hero.nextElementSibling && hero.nextElementSibling.querySelector('h1, h2, h3');
       function fade() {
         ticking = false;
@@ -187,8 +191,10 @@
         // Afgelegd / (afgelegd + wat de kop nog moet tot de helft van het scherm)
         var done = top0 - hero.getBoundingClientRect().top, r = head && head.getBoundingClientRect();
         var left = r ? r.top + r.height / 2 - window.innerHeight / 2 : 0.7 * hero.offsetHeight - done;
-        var p = left > 0 ? clamp(done / (done + left), 0, 1) : 1;
-        gsap.set(fading, { opacity: 1 - p * p * (3 - 2 * p) });
+        var p = left > 0 ? clamp(done / (done + left), 0, 1) : 1, o = +(1 - p * p * (3 - 2 * p)).toFixed(3);
+        if (o === faded) return;
+        faded = o;
+        gsap.set(fading, { opacity: o });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
       fade();
@@ -303,7 +309,8 @@
   /* data-a-pin (Section - Expertises): op elke breedte (niet bij reduced motion) rijden de kaarten van de
      scrollrij (expertises_list) als één trein met de scroll mee, zoals het prototype: ze komen van rechts buiten beeld
      binnen terwijl de sectie omhoog schuift (een x-verschuiving van de rij; de eerste kaart staat op zijn plek als de
-     sectie vast gaat staan), en rijden door op hooguit 0,72 px opzij per px scrollen
+     sectie vast gaat staan), en rijden door op hooguit 0,72 px opzij per px scrollen (alles met een transform op de rij,
+     niet met scrollLeft: dat hoeft dan niet elke frame opnieuw getekend te worden)
      terwijl de inhoud van de sectie (het eerste kind, padding-global) vaststaat (de scroll van de rij), tot de laatste
      kaart in beeld is, plus een korte pauze. Daarna schuift de volgende sectie (Werk) er met ronde bovenhoeken
      (radius/l) en een zachte schaduw overheen, en zakt de inhoud weg (iets omhoog, kleiner, vervagend); de trein rijdt daarbij
@@ -322,13 +329,13 @@
       function release() {
         m = null;
         sec.style.height = '';
-        stick.style.position = stick.style.top = '';
-        row.style.overflowX = row.style.scrollSnapType = '';
+        stick.style.position = stick.style.top = stick.style.overflowX = '';
+        row.style.overflow = row.style.scrollSnapType = '';
         if (next) ['position', 'zIndex', 'marginTop', 'borderTopLeftRadius', 'borderTopRightRadius', 'boxShadow', 'clipPath'].forEach(function (p) { next.style[p] = ''; });
         gsap.killTweensOf(train);
-        gsap.set(row, { clearProps: 'transform' });
+        gsap.set(row, { clearProps: 'transform,willChange' });
         row.scrollLeft = 0;
-        gsap.set(inner, { clearProps: 'transform,opacity' });
+        gsap.set(inner, { clearProps: 'transform,opacity,willChange' });
       }
       function measure() {
         release();
@@ -358,9 +365,12 @@
         sec.style.height = (h + dist + H) + 'px';
         stick.style.position = 'sticky';
         stick.style.top = top + 'px';
-        // De rij volgt alleen de scroll: geen eigen scroll of snap meer
-        row.style.overflowX = 'hidden';
+        // De rij volgt alleen de scroll: geen eigen scroll of snap meer. De kaarten mogen buiten de rij; stick snijdt ze af
+        row.style.overflow = 'visible';
         row.style.scrollSnapType = 'none';
+        stick.style.overflowX = 'clip';
+        gsap.set(row, { willChange: 'transform' });
+        gsap.set(inner, { willChange: 'transform, opacity' });
         if (next) {
           // Werk komt onderin binnen precies als de rij klaar is, en bedekt de inhoud als die loskomt
           next.style.position = 'relative';
@@ -373,22 +383,24 @@
         }
         update(true);
       }
-      // Hoe ver de trein gereden is (px opzij): eerst schuift de hele rij van rechts binnen, dan scrolt de rij zelf
+      // Hoe ver de trein gereden is (px opzij)
       var train = { d: 0 };
       function place() {
         if (!m) return;
-        // Voorbij het einde van de rij zelf rijdt de hele rij verder naar links
-        gsap.set(row, { x: Math.max(0, m.offset - train.d) - Math.max(0, train.d - m.offset - m.max) });
-        row.scrollLeft = clamp(train.d - m.offset, 0, m.max);
+        gsap.set(row, { x: m.offset - train.d, force3D: true });
       }
       function update(instant) {
         if (!m) return;
-        var secTop = sec.getBoundingClientRect().top, s = m.top - secTop;
+        var box = sec.getBoundingClientRect(), secTop = box.top, s = m.top - secTop;
+        // Uit beeld: niets te doen
+        if (!instant && (box.top > m.H * 1.2 || box.bottom < -m.H * 0.2)) return;
         var e0 = m.H - secTop, d = clamp(e0 <= m.entry ? e0 * m.v1 : m.offset + (e0 - m.entry) * m.v2, 0, m.travel);
         if (instant) { gsap.killTweensOf(train); train.d = d; place(); }
         // Licht nalopen maakt het schuiven met een muiswiel zachter; met Lenis is de scroll zelf al zacht
-        else gsap.to(train, { d: d, duration: lenis ? 0.15 : 0.5, ease: 'power3.out', overwrite: true, onUpdate: place });
+        else gsap.to(train, { d: d, duration: lenis ? 0.15 : 0.25, ease: 'power3.out', overwrite: true, onUpdate: place });
         var o = clamp((s - m.dist) / m.H, 0, 1), e = o < 0.5 ? 2 * o * o : 1 - Math.pow(-2 * o + 2, 2) / 2;
+        if (e === m.e) return;
+        m.e = e;
         gsap.set(inner, { y: -0.16 * m.H * e, scale: 1 - 0.05 * e, opacity: 1 - 0.8 * e, transformOrigin: '50% 40%' });
       }
       var ticking = false, timer;
@@ -506,8 +518,8 @@
         // De tekstkleur opnieuw lezen: die loopt mee met de paginakleur van data-a-value
         ink = (getComputedStyle(el).color.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
         words.forEach(function (w, i) {
-          // In stapjes van 2%, zodat er alleen iets gezet wordt als het woord echt verandert
-          var t = Math.round((1 - Math.pow(1 - clamp((progress.n - i) / soft, 0, 1), 3)) * 50) / 50;
+          // In stapjes, zodat er alleen iets gezet wordt als het woord echt verandert; op een telefoon grover
+          var steps = touchDevice.matches ? 20 : 50, t = Math.round((1 - Math.pow(1 - clamp((progress.n - i) / soft, 0, 1), 3)) * steps) / steps;
           if (last[i] === t) return;
           last[i] = t;
           if (t === 1) gsap.set(w, { clearProps: 'opacity,color,textShadow' });
@@ -516,9 +528,9 @@
       }
       draw();
       var tag = el.previousElementSibling, button = el.parentElement.nextElementSibling;
-      gsap.set([tag, button].filter(Boolean), { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' });
+      gsap.set([tag, button].filter(Boolean), withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
       function arrive(item, delay) {
-        if (item) gsap.to(item, { opacity: 1, y: 0, filter: 'blur(0rem)', delay: delay, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
+        if (item) gsap.to(item, withBlur({ opacity: 1, y: 0, delay: delay, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
       }
       onceInView(el, 22, function () {
         arrive(tag, 0);
@@ -548,7 +560,7 @@
     var section = values[0].closest('section');
     var cultuur = section.previousElementSibling, werk = cultuur.previousElementSibling;
     var closing = values[0].parentElement.nextElementSibling, eyebrow = values[0].parentElement.previousElementSibling;
-    var away = { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' };
+    var away = withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)');
     var light = rgbOf(cultuur, 'backgroundColor'), dark = rgbOf(section, 'backgroundColor'), ink = rgbOf(cultuur, 'color'), paper = rgbOf(section, 'color');
     var rows = values.map(function (item, i) {
       var dir = i % 2 ? -1 : 1, rules = [item.querySelector('.kernwaarde_rule')];
@@ -570,6 +582,7 @@
         inner.push(word);
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
+      gsap.set(title, { willChange: 'transform' });
       gsap.set(inner, { yPercent: 190, visibility: 'hidden' });
       // De eerste rij start later dan in het prototype, pas als de achtergrond donker wordt: wit op licht is onzichtbaar
       return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false, start: i ? 1 : 0.8 };
@@ -602,20 +615,24 @@
         if (eyebrow && !wanted) gsap.set(eyebrow, Object.assign({}, away));
       } else if (wanted !== isDark) {
         gsap.to(theme, { m: wanted ? 1 : 0, duration: 0.8, ease: 'power2.inOut', overwrite: true, onUpdate: paint });
-        if (eyebrow && wanted) gsap.to(eyebrow, { opacity: 1, y: 0, filter: 'blur(0rem)', delay: 0.3, duration: 1.1, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform,filter' });
+        if (eyebrow && wanted) gsap.to(eyebrow, withBlur({ opacity: 1, y: 0, delay: 0.3, duration: 1.1, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
         else if (eyebrow) gsap.to(eyebrow, Object.assign({ duration: 0.3, ease: 'power2.out', overwrite: true }, away));
       }
       isDark = wanted;
       rows.forEach(function (r) {
         var box = r.el.getBoundingClientRect(), q = clamp((H * r.start - box.top - box.height / 2) / (H * 0.45), 0, 1);
-        gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)) });
-        gsap.set(r.rules, { scaleX: easeOut(clamp(q * 1.4, 0, 1)) });
+        // Alleen zetten als de rij echt beweegt: buiten beeld staat q stil op 0 of 1
+        if (q !== r.q) {
+          r.q = q;
+          gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)), force3D: true });
+          gsap.set(r.rules, { scaleX: easeOut(clamp(q * 1.4, 0, 1)) });
+        }
         if (!r.shown && q > 0.92) show(r, true);
         else if (r.shown && q < 0.7) show(r, false);
       });
     }
     window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-    window.addEventListener('resize', update);
+    window.addEventListener('resize', function () { rows.forEach(function (r) { r.q = null; }); update(); });
     update();
   });
 
@@ -626,30 +643,35 @@
      foto vast en schuift de volgende sectie (Reviews) er met ronde bovenhoeken (radius/l) en een zachte schaduw overheen,
      zoals Werk over Expertises (keuze van de gebruiker, niet in het prototype); de foto vervaagt daarbij naar de donkere
      achtergrond van de sectie. site.js zet daarvoor kernwaarden_team
-     sticky, maakt de wrapper een schermhoogte hoger en geeft Reviews een negatieve marge. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
-     schuift daarin omhoog, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
-     de maat van het vlak, dus er is geen extra element nodig. Reduced motion en zonder site.js: de foto uit de class. */
+     sticky en schaalt het met een transform, maakt de wrapper een schermhoogte hoger en geeft Reviews een negatieve marge. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
+     schuift daarin omhoog, van het moment dat hij binnenkomt tot hij weg is. Reduced motion en zonder site.js: de foto uit de class. */
   each('[data-a-team]', function (team) {
     var img = team.querySelector('img');
     if (!img || reduce.matches) return;
     withGsap(function (gsap) {
       var pad = team.closest('.padding-section'), touch = window.matchMedia('(hover: none)');
       var comp = team.parentElement, next = team.closest('section').nextElementSibling;
-      var W, H, sw, sh, ticking = false;
-      // Schermvullend met object-fit cover: op een smal scherm bepaalt de hoogte hoe groot de foto (16:9) wordt
-      img.sizes = '(max-aspect-ratio: 16/9) 178vh, 100vw';
+      var W, H, sw, sh, ew, eh, fx, k, nat, corner = -1, ticking = false;
       function update() {
         ticking = false;
         // Waar het vlak zou staan zonder vastzetten: de wrapper eindigt twee schermhoogtes onder die plek
         var top = comp.getBoundingClientRect().bottom - 2 * H, g = clamp((H - top) / H, 0, 1);
-        var h = sh + (H - sh) * g, extra = h * 0.15, o = extra * clamp((H - top) / (2 * H), 0, 1);
+        if (top > H * 1.2 || top < -H * 1.2) return;
+        var w = sw + (W - sw) * g, h = sh + (H - sh) * g, extra = h * 0.15, o = extra * clamp((H - top) / (2 * H), 0, 1);
+        // Het vlak schaalt (sx, sy), de foto schaalt binnenin tegengesteld, als object-fit cover plus de parallax-marge.
+        // Alleen transforms: breedte, hoogte of clip-path animeren is op een telefoon te zwaar
+        var sx = w / W, sy = h / H, s = Math.max(w / ew, (h + extra) / eh), r = Math.round(20 * (1 - g));
+        gsap.set(team, { x: (W - sw) / 2 * (1 - g), y: Math.min(H * 0.06, 56) * (1 - g), scaleX: sx, scaleY: sy, force3D: true });
+        // Alleen bij een andere waarde: dit is het enige hier dat niet puur GPU-werk is. De schaal is verrekend, zodat de
+        // hoek er rond uitziet, en de stappen vallen niet op
+        if (r !== corner) { corner = r; team.style.borderRadius = r / sx + 'px / ' + r / sy + 'px'; }
         gsap.set(img, {
-          left: (W - sw) / 2 * (1 - g),
-          top: Math.min(H * 0.06, 56) * (1 - g) - o,
-          width: sw + (W - sw) * g,
-          height: h + extra,
-          opacity: 1 - 0.9 * clamp(-top / H, 0, 1),
-          clipPath: 'inset(' + o + 'px 0px ' + (extra - o) + 'px 0px round ' + 20 * (1 - g) + 'px)'
+          x: -(ew * s - w) * fx / sx,
+          y: -((eh * s - h - extra) / 2 + o) / sy,
+          scaleX: s * k / sx,
+          scaleY: s * k / sy,
+          force3D: true,
+          opacity: 1 - 0.9 * clamp(-top / H, 0, 1)
         });
       }
       function measure() {
@@ -657,8 +679,19 @@
         H = window.innerHeight;
         sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
         sh = sw * 0.62;
-        gsap.set(team, { position: 'sticky', top: 0, width: W, height: H, maxWidth: 'none', aspectRatio: 'auto', borderRadius: 0 });
-        gsap.set(img, { position: 'absolute', maxWidth: 'none' });
+        gsap.set(team, { position: 'sticky', top: 0, width: W, height: H, maxWidth: 'none', aspectRatio: 'auto', transformOrigin: '0 0', willChange: 'transform' });
+        // De hele foto op de schaal waarop hij het scherm plus de parallax-marge vult; k: de foto staat kleiner in de pagina
+        // en wordt opgeschaald, zodat hij niet scherper getekend wordt dan het bronbestand (scheelt veel op een 3x-scherm)
+        var ratio = img.naturalWidth / img.naturalHeight || 16 / 9, dpr = window.devicePixelRatio || 1;
+        ew = Math.max(W, H * 1.15 * ratio);
+        eh = ew / ratio;
+        nat = img.naturalWidth;
+        k = nat ? Math.max(1, ew * dpr / nat) : 1;
+        fx = parseFloat(getComputedStyle(img).objectPosition) / 100;
+        if (isNaN(fx)) fx = 0.5;
+        // Alleen bij een andere waarde: sizes zetten laadt de foto opnieuw, en dat vuurt weer load
+        if (img.sizes !== Math.ceil(ew) + 'px') img.sizes = Math.ceil(ew) + 'px';
+        gsap.set(img, { position: 'absolute', left: 0, top: 0, width: ew / k, height: eh / k, maxWidth: 'none', transformOrigin: '0 0', willChange: 'transform, opacity' });
         if (pad) pad.style.paddingBottom = '0';
         comp.style.height = '';
         comp.style.height = comp.offsetHeight + H + 'px';
@@ -676,6 +709,8 @@
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
       // Op de telefoon verandert de hoogte als de adresbalk inklapt: alleen bij een echte breedtewijziging opnieuw meten
       window.addEventListener('resize', function () { if (!touch.matches || document.documentElement.clientWidth !== W) measure(); });
+      // De maat van de foto is pas bekend als hij geladen is
+      img.addEventListener('load', function () { if (img.naturalWidth !== nat) measure(); });
       measure();
     });
   });
@@ -731,13 +766,13 @@
 
   /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis komen een keer
      binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
-     fade en omhoog). Reduced motion en zonder site.js: gewoon zichtbaar. */
+     fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
   var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels';
   if (!reduce.matches && document.querySelector(arrivals)) withGsap(function (gsap) {
     each(arrivals, function (el) {
-      gsap.set(el, { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' });
+      gsap.set(el, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
       onceInView(el, 10, function () {
-        gsap.to(el, { opacity: 1, y: 0, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
+        gsap.to(el, withBlur({ opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
       });
     });
   });
@@ -752,7 +787,7 @@
     if (!stack) return;
     withGsap(function (gsap) {
       function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
-      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), ticking = false;
+      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), ticking = false, drawn = -1;
       svg.setAttribute('aria-hidden', 'true');
       svg.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;';
       var lines = [0, 1].map(function () {
@@ -775,11 +810,13 @@
       function update() {
         ticking = false;
         var H = window.innerHeight, L = reduce.matches ? 1 : clamp((H * 0.55 - section.getBoundingClientRect().top) / (H * 0.9), 0, 1);
+        if (L === drawn) return;
+        drawn = L;
         gsap.set(lines[0], { strokeDashoffset: 1 - easeInOut(L) });
         gsap.set(lines[1], { strokeDashoffset: 1 - easeInOut(clamp(L * 1.2 - 0.2, 0, 1)) });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-      function refresh() { size(); update(); }
+      function refresh() { size(); drawn = -1; update(); }
       window.addEventListener('resize', refresh);
       window.addEventListener('load', refresh);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
@@ -1104,11 +1141,11 @@
 
   /* Scrollrij, eindeloos: de actieve kaart staat in het midden van de rij, en de rij begint op de breedste kaart. Een pijl schuift naar de volgende of vorige
      kaart, met dezelfde beweging als het zelf doorschuiven: elke 4 seconden als de rij in beeld is, niet bij hover, focus of
-     reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
-     de vaart door en remt af op een kaart. site.js doet het uitlijnen zelf met GSAP; de scroll-snap uit de class (voor
-     zonder JS) staat uit, want die snapt hard. */
+     reduced motion. Slepen met de muis: de rij volgt, schiet na loslaten met de vaart door en remt af op een kaart; site.js
+     doet het uitlijnen dan zelf met GSAP en de scroll-snap uit de class staat uit, want die snapt hard. Op touch swipet de
+     browser zelf met scroll-snap (per kaart, in het midden): dat volgt de vinger het best en houdt zijn eigen natrillen. */
   function carouselRow(list, items) {
-    var gsap = null, tween = null, dest = 0;
+    var gsap = null, tween = null, dest = 0, touch = touchDevice.matches, touching = false;
     withGsap(function (g) { gsap = g; });
     // Eindeloos: een kopie van alle kaarten ervoor en erna. Staat de rij na het schuiven in een kopie, dan springt hij
     // ongemerkt een set terug. Kopieën zijn verborgen voor schermlezers en niet met Tab te bereiken, wel klikbaar.
@@ -1134,21 +1171,32 @@
     function normalize() {
       if (tween || drag) return;
       var base = posOf(items[0]), set = after[0].offsetLeft - items[0].offsetLeft;
-      if (list.scrollLeft < base - 2) list.scrollLeft += set;
-      else if (list.scrollLeft >= base + set - 2) list.scrollLeft -= set;
+      var jump = list.scrollLeft < base - 2 ? set : list.scrollLeft >= base + set - 2 ? -set : 0;
+      if (!jump) return;
+      // Scroll-snap even uit, anders trekt de browser de sprong terug
+      list.style.scrollSnapType = 'none';
+      list.scrollLeft += jump;
+      list.style.scrollSnapType = touch ? 'x mandatory' : 'none';
     }
-    list.style.scrollSnapType = 'none';
-    // Verticaal scrollen over de rij blijft bij de pagina; horizontaal slepen doet site.js
-    list.style.touchAction = 'pan-y';
+    list.style.scrollSnapType = touch ? 'x mandatory' : 'none';
+    if (touch) {
+      // scroll-padding uit de class is voor links uitlijnen zonder JS; hier staat de kaart in het midden
+      list.style.scrollPadding = '0';
+      cards.forEach(function (c) { c.style.scrollSnapAlign = 'center'; c.style.scrollSnapStop = 'always'; });
+    }
+    // Muis: horizontaal slepen doet site.js en verticaal scrollen blijft bij de pagina
+    else list.style.touchAction = 'pan-y';
     function scrollTo(x, duration, ease) {
       stop();
       if (!gsap || reduce.matches) { list.scrollLeft = x; normalize(); return; }
       dest = x;
+      list.style.scrollSnapType = 'none';
       tween = gsap.to(list, { scrollLeft: x, duration: duration || 0.6, ease: ease || 'power3.out', onComplete: function () { stop(); normalize(); } });
     }
     function stop() {
       if (tween) tween.kill();
       tween = null;
+      if (touch) list.style.scrollSnapType = 'x mandatory';
     }
     function go(d) {
       // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
@@ -1168,7 +1216,7 @@
     var inView = false, paused = false, timer;
     function schedule() {
       clearTimeout(timer);
-      timer = setTimeout(function () { if (inView && !paused && !drag && !document.hidden && !reduce.matches) go(1); schedule(); }, 4000);
+      timer = setTimeout(function () { if (inView && !paused && !drag && !touching && !document.hidden && !reduce.matches) go(1); schedule(); }, 4000);
     }
     if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { inView = es[0].isIntersecting; }, { threshold: 0.3 }).observe(list);
     list.addEventListener('mouseenter', function () { paused = true; });
@@ -1178,16 +1226,25 @@
     // Trackpad: de browser scrollt vrij; staat de rij 150 ms stil, dan zacht naar de dichtstbijzijnde kaart
     list.addEventListener('wheel', function (e) { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stop(); schedule(); }, { passive: true });
     var settle;
-    function later() { clearTimeout(settle); settle = setTimeout(function () { if (!tween && !drag) settleNear(list.scrollLeft); }, 150); }
+    function later() {
+      clearTimeout(settle);
+      settle = setTimeout(function () {
+        if (tween || drag || touching) return;
+        // Op touch heeft de browser al uitgelijnd
+        if (touch) normalize(); else settleNear(list.scrollLeft);
+      }, 150);
+    }
     list.addEventListener('scroll', function () { if (!tween && !drag) later(); }, { passive: true });
     window.addEventListener('resize', later);
+    list.addEventListener('touchstart', function () { touching = true; }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (name) { list.addEventListener(name, function () { touching = false; later(); }, { passive: true }); });
 
     var drag = null, dragged = false;
     list.addEventListener('pointerdown', function (e) {
       stop();
       schedule();
       dragged = false;
-      if (e.button !== 0) return;
+      if (e.button !== 0 || e.pointerType === 'touch') return;
       drag = { x: e.clientX, left: list.scrollLeft, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 };
     });
     list.addEventListener('pointermove', function (e) {
