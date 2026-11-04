@@ -183,8 +183,29 @@
 
 <p id="result">Bezig...</p>
 
-<script src="../site.js"></script>
 <script>
+  // Spion voor de opruimcontrole, vóór site.js: welke observers lopen nog, wat is de DOM voordat site.js iets doet
+  var spy = { observers: new Set(), signals: [], errors: [] };
+  ['IntersectionObserver', 'MutationObserver'].forEach(function (name) {
+    var Real = window[name];
+    window[name] = class extends Real {
+      observe(target, options) { if (/site\.js|modules\//.test(new Error().stack)) spy.observers.add(this); super.observe(target, options); }
+      disconnect() { spy.observers.delete(this); super.disconnect(); }
+    };
+  });
+  var realAdd = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function (type, fn, options) {
+    if (options && options.signal && (this === window || this === document)) spy.signals.push(options.signal);
+    return realAdd.call(this, type, fn, options);
+  };
+  var realError = console.error;
+  console.error = function () { spy.errors.push(String(arguments[0])); realError.apply(console, arguments); };
+  function fingerprint(el) { return el.tagName + '(' + [].filter.call(el.children, function (c) { return c.tagName !== 'SCRIPT'; }).map(fingerprint).join(' ') + ')'; }
+  var bodyBefore = fingerprint(document.body);
+  var fillBefore = document.getElementById('fill').innerHTML;
+</script>
+<script type="module" src="../site.js"></script>
+<script type="module">
   // Lokale controle van de modules: open dit bestand via een lokale server (de hover, het slepen en het automatisch
   // doorschuiven controleer je met de hand). Het resultaat verschijnt na een paar seconden.
   var forms = document.querySelectorAll('form');
@@ -213,15 +234,23 @@
   burger.click();
   checks['hamburger sluit menu'] = burger.getAttribute('aria-expanded') === 'false' && getComputedStyle($('[data-a-nav-menu]')).display === 'none';
 
+  // De nav zit in de kern; de rest start als de modules geladen zijn
+  var site = await import('../site.js');
+  await site.ready;
+
   // Tabs
   var tabs = document.querySelectorAll('[data-a-tab]'), tpanels = document.querySelectorAll('[data-a-tab-panel]');
   function shown(el) { return getComputedStyle(el).display !== 'none'; }
   checks['tabs: eerste open'] = shown(tpanels[0]) && !shown(tpanels[1]) && tabs[0].tabIndex === 0 && tabs[1].tabIndex === -1;
+  // GSAP is er al: laat de lopende tweens meteen eindigen
+  function finish() { gsap.globalTimeline.getChildren(true, true, false).forEach(function (t) { t.progress(1); }); }
   tabs[1].click();
+  finish();
   checks['tab wisselt'] = tabs[1].getAttribute('aria-selected') === 'true' && tabs[0].getAttribute('aria-selected') === 'false' && shown(tpanels[1]) && !shown(tpanels[0]);
   var pill = $('[data-a-tab-pill]');
   checks['pil naar actieve tab'] = Math.abs(pill.getBoundingClientRect().left - tabs[1].getBoundingClientRect().left) < 1 && Math.abs(pill.offsetWidth - tabs[1].offsetWidth) < 1 && getComputedStyle(tabs[1]).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(tabs[1]).opacity === '1' && getComputedStyle(tabs[0]).opacity === '0.3';
   key(tabs[1], 'ArrowRight'); key(tabs[2], 'ArrowRight');
+  finish();
   checks['pijltjestoets (rond)'] = tabs[0].getAttribute('aria-selected') === 'true' && document.activeElement === tabs[0] && shown(tpanels[0]);
   checks['tab koppelt paneel'] = tpanels[2].getAttribute('aria-labelledby') === tabs[2].id && tabs[2].getAttribute('aria-controls') === tpanels[2].id;
 
@@ -230,18 +259,19 @@
   function visible(el) { return getComputedStyle(el).visibility === 'visible'; }
   checks['teller start'] = $('[data-a-carousel-current]').textContent === '01' && $('[data-a-carousel-total]').textContent === ' / 03';
   sNext.click();
-  checks['stapel volgende'] = visible(cards[1]) && !visible(cards[0]) && $('[data-a-carousel-current]').textContent === '02';
+  checks['stapel volgende'] = !cards[1].hasAttribute('aria-hidden') && cards[0].getAttribute('aria-hidden') === 'true' && $('[data-a-carousel-current]').textContent === '02';
   sPrev.click(); sPrev.click();
   checks['stapel vorige (rond)'] = visible(cards[2]) && $('[data-a-carousel-current]').textContent === '03';
   checks['stapel aria-live'] = $('.stack').getAttribute('aria-live') === 'polite';
 
   // Scrollrij: pas na het laden (vóór de eerste weergave negeert de browser smooth scrollen), en dat scrollen duurt even
   var row = $('.row');
-  window.addEventListener('load', function waitGsap(_, n) {
+  function waitGsap(_, n) {
     // site.js laadt GSAP zelf van het Webflow-CDN; wacht daarop (maximaal 5 s)
     n = n || 0;
     if (window.gsap || n > 50) setTimeout(rowChecks, 300); else setTimeout(function () { waitGsap(null, n + 1); }, 100);
-  });
+  }
+  if (document.readyState === 'complete') waitGsap(); else window.addEventListener('load', waitGsap);
   function rowChecks() {
     // GSAP is nu geladen: het pijltje draait met een tween
     // (eerst afwachten: een klik op de rijknop is een klik buiten de nav en sluit de dropdown)
@@ -346,7 +376,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(function () { detailChecks(report); }); }); }); }); }); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(function () { detailChecks(cleanupChecks); }); }); }); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -867,6 +897,42 @@
       }, 2500);
       }, 700);
     }, 700);
+  }
+
+  // Elke module laadt, en na opruimen blijft er niets lopen en staat de DOM weer zoals hij was. Daarna nog een keer starten en
+  // opruimen, nu met een oog op de timers
+  async function cleanupChecks() {
+    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter'];
+    var loaded = await Promise.all(names.map(function (n) { return import('../modules/' + n + '.js'); }));
+    checks['opruimen: elke module exporteert init'] = loaded.every(function (m) { return typeof m.init === 'function'; });
+    function leftovers(label) {
+      // De nav hoort bij de kern en blijft
+      var tweens = gsap.globalTimeline.getChildren(true, true, true).filter(function (t) { return !t.targets()[0].closest || !t.targets()[0].closest('[data-a-nav]'); });
+      checks['opruimen ' + label + ': geen tweens meer'] = tweens.length === 0;
+      checks['opruimen ' + label + ': geen observers meer'] = spy.observers.size === 0;
+      checks['opruimen ' + label + ': listeners op window en document weg'] = spy.signals.length > 0 && spy.signals.every(function (s) { return s.aborted; });
+      checks['opruimen ' + label + ': geen toegevoegde elementen'] = fingerprint(document.body) === bodyBefore;
+      checks['opruimen ' + label + ': tekst terug'] = document.getElementById('fill').innerHTML === fillBefore;
+    }
+    site.stop();
+    await new Promise(function (r) { setTimeout(r, 100); });
+    leftovers('na de test');
+    var realSet = window.setTimeout, realClear = window.clearTimeout, open = new Set();
+    window.setTimeout = function (fn, ms) { var id = realSet(function () { open.delete(id); fn(); }, ms); open.add(id); return id; };
+    window.clearTimeout = function (id) { open.delete(id); realClear(id); };
+    var errorsBefore = spy.errors.length;
+    await site.start();
+    await new Promise(function (r) { realSet(r, 600); });
+    checks['opnieuw starten: geen fouten'] = spy.errors.length === errorsBefore;
+    var running = open.size;
+    site.stop();
+    window.setTimeout = realSet;
+    window.clearTimeout = realClear;
+    await new Promise(function (r) { realSet(r, 100); });
+    checks['opnieuw starten: er lopen timers'] = running > 0;
+    checks['opruimen: geen timers meer'] = open.size === 0;
+    leftovers('na opnieuw starten');
+    report();
   }
 
   function report() {
