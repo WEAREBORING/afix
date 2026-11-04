@@ -517,7 +517,12 @@
           to(items[0], H * 0.85);
           setTimeout(function () {
           checks['kernwaarden: eerste rij start later'] = x(title) > W / 2;
-          to(items[0], H * 0.3);
+          // q 0,8: het woord staat bijna op zijn plek, dan is de subtekst er al
+          to(items[0], H * 0.44 - items[0].offsetHeight / 2);
+          setTimeout(function () {
+            checks['kernwaarden: subtekst start zodra het woord staat'] = getComputedStyle(text.querySelector('span span')).visibility === 'visible';
+            to(items[0], H * 0.3);
+          }, 400);
           setTimeout(function () {
             checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1 && getComputedStyle(text.querySelector('span span')).visibility === 'visible';
             to(items[0], H);
@@ -530,7 +535,7 @@
                 done();
               }, 1100);
             }, 1400);
-          }, 1300);
+          }, 1700);
           }, 300);
         }, 1200);
       }, 350);

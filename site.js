@@ -1,4 +1,4 @@
-/* Afix site.js v0.70: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.71: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -594,8 +594,9 @@
   /* data-a-value (Item - Kernwaarde) en de paginakleur: alles hangt aan de scroll, zoals het prototype. q = (schermhoogte
      min het midden van de rij) / (0,45 x schermhoogte). Het woord (kernwaarde_title) schuift om en om van rechts en links
      (Nuchter rechts, Direct links, Eigenwijs rechts) van net buiten het scherm naar het midden, de lijn (kernwaarde_rule)
-     groeit vanaf dezelfde kant, 1,4 keer zo snel; de slotlijn na de lijst hoort bij de laatste rij. Boven q 0,92 schuift de
-     subtekst (kernwaarde_text) woord voor woord omhoog uit een masker, onder q 0,7 weer terug.
+     groeit vanaf dezelfde kant, 1,4 keer zo snel; de slotlijn na de lijst hoort bij de laatste rij. Boven q 0,72, zodra het
+     woord op zijn plek staat, schuift de subtekst (kernwaarde_text) woord voor woord omhoog uit een masker, onder q 0,5 weer
+     terug (het prototype wacht tot 0,92, de gebruiker koos voor sneller).
      Paginakleur: anders dan het prototype een timeline en niet aan de scroll (keuze van de gebruiker, zo kun je niet op een
      tussenkleur eindigen). Komt de bovenkant van Kernwaarden boven 55% van de schermhoogte, dan loopt de achtergrond van
      Cultuur en Kernwaarden in 0,8 seconde van licht naar donker; scrol je terug tot onder 65%, dan weer terug. Daarna blijft
@@ -642,7 +643,7 @@
       r.shown = on;
       // Verborgen woorden ook echt onzichtbaar: of een masker sluit hangt anders af van lettertype en scherm
       if (on) gsap.set(r.inner, { visibility: 'visible' });
-      gsap.to(r.inner, { yPercent: on ? 0 : 190, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
+      gsap.to(r.inner, { yPercent: on ? 0 : 190, duration: 0.5, stagger: 0.02, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
     }
     var theme = { m: 0 }, isDark = null, ticking = false;
     function paint() {
@@ -678,8 +679,8 @@
           gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)), force3D: true });
           gsap.set(r.rules, { scaleX: easeOut(clamp(q * 1.4, 0, 1)) });
         }
-        if (!r.shown && q > 0.92) show(r, true);
-        else if (r.shown && q < 0.7) show(r, false);
+        if (!r.shown && q > 0.72) show(r, true);
+        else if (r.shown && q < 0.5) show(r, false);
       });
     }
     window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
