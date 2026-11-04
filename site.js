@@ -1,4 +1,4 @@
-/* Afix site.js v0.39: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.40: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -423,7 +423,8 @@
      woord begint onzichtbaar, wordt dan een wazige gloed (de tekst zelf doorzichtig, met een vage schaduw in signaalgeel,
      surface/accent) en lost op in scherpe tekst in de kleur uit de class: de tekst wordt dekkend, de gloed kleurt naar de
      tekstkleur en verdwijnt. Tempo gemeten op butter.video: elke 0,05 seconde start een woord, en een woord duurt 0,95
-     seconde. Woorden blijven gewone inline
+     seconde. De tag boven de kop (element ervoor) en de knop eronder (element na de wrapper van de kop) komen mee: de tag
+     eerst, de knop als het laatste woord start, met dezelfde beweging als de hero. Woorden blijven gewone inline
      spans, dus de tekst breekt op dezelfde plekken af. Schermlezers lezen de gewone tekst (aria-label op de kop, de woorden
      zijn aria-hidden). Reduced motion en zonder site.js: gewoon de tekst. */
   each('[data-a-fill]', function (el) {
@@ -472,11 +473,18 @@
         });
       }
       draw();
+      var tag = el.previousElementSibling, button = el.parentElement.nextElementSibling;
+      gsap.set([tag, button].filter(Boolean), { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' });
+      function arrive(item, delay) {
+        if (item) gsap.to(item, { opacity: 1, y: 0, filter: 'blur(0rem)', delay: delay, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
+      }
       var watch = new IntersectionObserver(function (entries) {
         // Ook starten als de kop al voorbij is, bijvoorbeeld bij herladen lager op de pagina
         if (!entries[0].isIntersecting && entries[0].boundingClientRect.top >= 0) return;
         watch.disconnect();
-        gsap.to(progress, { n: words.length + soft, duration: (words.length + soft) * 0.05, ease: 'none', onUpdate: draw });
+        arrive(tag, 0);
+        arrive(button, 0.1 + (words.length - 1) * 0.05);
+        gsap.to(progress, { n: words.length + soft, delay: 0.1, duration: (words.length + soft) * 0.05, ease: 'none', onUpdate: draw });
       }, { rootMargin: '0px 0px -22% 0px' });
       watch.observe(el);
     });

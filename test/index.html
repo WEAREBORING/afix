@@ -97,7 +97,13 @@
 </div></div></section>
 <section id="na-pin" style="height: 40rem">Volgende sectie</section>
 
-<h2 data-a-fill="text" id="fill" style="max-width: 20rem">Niet als bureau op afstand, maar als verlengstuk van je team.</h2>
+<div>
+  <div>
+    <div id="fill-tag">Cultuur</div>
+    <h2 data-a-fill="text" id="fill" style="max-width: 20rem">Niet als bureau op afstand, maar als verlengstuk van je team.</h2>
+  </div>
+  <a href="#" id="fill-button">Maak kennis</a>
+</div>
 <div style="height: 60rem"></div>
 
 <p id="result">Bezig...</p>
@@ -333,7 +339,7 @@
 
   function fillChecks(done) {
     // Tekst speelt een keer af zodra de kop in beeld komt; schermlezer leest de hele zin
-    var el = $('#fill'), words = el.querySelectorAll('span[aria-hidden]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var el = $('#fill'), tag = $('#fill-tag'), button = $('#fill-button'), words = el.querySelectorAll('span[aria-hidden]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     checks['fill: tekst in woorden, aria-label met de hele zin'] = still ? !words.length : words.length === 11 && el.getAttribute('aria-label') === 'Niet als bureau op afstand, maar als verlengstuk van je team.';
     if (still) return done();
     var H = innerHeight, r = el.getBoundingClientRect();
@@ -341,6 +347,7 @@
     window.scrollTo(0, window.scrollY + r.top - 0.78 * H - 20);
     setTimeout(function () {
       var hidden = [].every.call(words, function (w) { return getComputedStyle(w).opacity === '0'; });
+      checks['fill: tag en knop verborgen tot de tekst start'] = getComputedStyle(tag).opacity === '0' && getComputedStyle(button).opacity === '0';
       window.scrollTo(0, window.scrollY + 60);
       setTimeout(function () {
         var blurry = [].some.call(words, function (w) { return /em/.test(w.style.textShadow || '') && parseFloat(getComputedStyle(w).opacity) > 0; });
@@ -348,6 +355,7 @@
           checks['fill: onzichtbaar, speelt vanzelf af, dan scherp'] = hidden && blurry && [].every.call(words, function (w) { return !w.getAttribute('style'); });
           window.scrollTo(0, 0);
           setTimeout(function () {
+            checks['fill: tag en knop komen mee en staan daarna gewoon'] = !tag.getAttribute('style') && !button.getAttribute('style');
             checks['fill: blijft staan bij terugscrollen'] = [].every.call(words, function (w) { return !w.getAttribute('style'); });
             done();
           }, 300);
