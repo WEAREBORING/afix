@@ -1,4 +1,4 @@
-/* Afix site.js v0.38: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.39: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -422,7 +422,8 @@
      een keer af zodra de bovenkant van de kop op 78% van de schermhoogte komt en hangt verder niet aan het scrollen. Een
      woord begint onzichtbaar, wordt dan een wazige gloed (de tekst zelf doorzichtig, met een vage schaduw in signaalgeel,
      surface/accent) en lost op in scherpe tekst in de kleur uit de class: de tekst wordt dekkend, de gloed kleurt naar de
-     tekstkleur en verdwijnt. Elk woord loopt over een paar woorden in. Woorden blijven gewone inline
+     tekstkleur en verdwijnt. Tempo gemeten op butter.video: elke 0,05 seconde start een woord, en een woord duurt 0,95
+     seconde. Woorden blijven gewone inline
      spans, dus de tekst breekt op dezelfde plekken af. Schermlezers lezen de gewone tekst (aria-label op de kop, de woorden
      zijn aria-hidden). Reduced motion en zonder site.js: gewoon de tekst. */
   each('[data-a-fill]', function (el) {
@@ -440,7 +441,7 @@
       }
       var ink = rgbOf('inherit'), glow = rgbOf('var(--_theme---surface--accent)');
       function mix(a, b, t) { return a.map(function (v, k) { return Math.round(v + (b[k] - v) * t); }).join(', '); }
-      var words = [], soft = 3, last = [];
+      var words = [], soft = 19, last = [];
       el.setAttribute('aria-label', text);
       el.textContent = '';
       text.split(' ').forEach(function (w, i, all) {
@@ -452,10 +453,11 @@
         if (i < all.length - 1) el.appendChild(document.createTextNode(' '));
       });
       function look(t) {
+        var c = clamp((t - 0.3) / 0.7, 0, 1);
         return {
-          opacity: clamp(t / 0.15, 0, 1),
-          color: 'rgba(' + ink.join(', ') + ', ' + Math.pow(clamp((t - 0.1) / 0.9, 0, 1), 1.5) + ')',
-          textShadow: 'rgba(' + mix(glow, ink, t) + ', ' + (0.9 * (1 - t)) + ') 0 0 ' + (0.08 + 0.06 * t) + 'em'
+          opacity: clamp(t / 0.65, 0, 1),
+          color: 'rgba(' + ink.join(', ') + ', ' + c + ')',
+          textShadow: 'rgba(' + mix(glow, ink, c) + ', ' + (0.9 * (1 - c)) + ') 0 0 ' + (0.08 + 0.06 * c) + 'em'
         };
       }
       var progress = { n: 0 };
@@ -474,7 +476,7 @@
         // Ook starten als de kop al voorbij is, bijvoorbeeld bij herladen lager op de pagina
         if (!entries[0].isIntersecting && entries[0].boundingClientRect.top >= 0) return;
         watch.disconnect();
-        gsap.to(progress, { n: words.length + soft, duration: (words.length + soft) * 0.1, ease: 'none', onUpdate: draw });
+        gsap.to(progress, { n: words.length + soft, duration: (words.length + soft) * 0.05, ease: 'none', onUpdate: draw });
       }, { rootMargin: '0px 0px -22% 0px' });
       watch.observe(el);
     });
