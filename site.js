@@ -1,4 +1,4 @@
-/* Afix site.js v0.49: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.50: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -544,12 +544,14 @@
         inner.push(word);
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
-      gsap.set(inner, { yPercent: 130 });
+      gsap.set(inner, { yPercent: 130, visibility: 'hidden' });
       return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false };
     });
     function show(r, on) {
       r.shown = on;
-      gsap.to(r.inner, { yPercent: on ? 0 : 130, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
+      // Verborgen woorden ook echt onzichtbaar: of een masker sluit hangt anders af van lettertype en scherm
+      if (on) gsap.set(r.inner, { visibility: 'visible' });
+      gsap.to(r.inner, { yPercent: on ? 0 : 130, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
     }
     var lastMix = -1, ticking = false;
     function paint(m) {

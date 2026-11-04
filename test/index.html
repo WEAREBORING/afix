@@ -449,7 +449,7 @@
     setTimeout(function () {
       checks['kernwaarden: om en om buiten beeld, lijn op 0'] = x(title) > W / 2 && x(second) < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0;
       checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
-      checks['kernwaarden: subtekst helemaal verborgen in het masker'] = [].every.call(text.children, function (m) { return m.firstElementChild.getBoundingClientRect().top >= m.getBoundingClientRect().bottom; });
+      checks['kernwaarden: subtekst helemaal verborgen in het masker'] = [].every.call(text.children, function (m) { return m.firstElementChild.getBoundingClientRect().top >= m.getBoundingClientRect().bottom && getComputedStyle(m.firstElementChild).visibility === 'hidden'; });
       checks['paginakleur: begint licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(29, 29, 27)';
       to(sec, H * 0.55);
       setTimeout(function () {
@@ -458,11 +458,11 @@
         // Kop net onder de bovenrand: rij helemaal binnen, pagina donker
         to(items[0], H * 0.3);
         setTimeout(function () {
-          checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1;
+          checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1 && getComputedStyle(text.querySelector('span span')).visibility === 'visible';
           checks['paginakleur: donker'] = bg(sec) === 'rgb(39, 51, 39)' && getComputedStyle(title).color === 'rgb(255, 255, 255)';
           to(items[0], H);
           setTimeout(function () {
-            checks['kernwaarden: terugscrollen draait het om'] = x(title) > W / 2 && gsap.getProperty(text.querySelector('span span'), 'yPercent') > 100;
+            checks['kernwaarden: terugscrollen draait het om'] = x(title) > W / 2 && gsap.getProperty(text.querySelector('span span'), 'yPercent') > 100 && getComputedStyle(text.querySelector('span span')).visibility === 'hidden';
             done();
           }, 1400);
         }, 1300);
