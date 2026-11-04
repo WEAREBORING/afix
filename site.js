@@ -1,4 +1,4 @@
-/* Afix site.js v0.59: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.60: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -621,7 +621,8 @@
      of de schermbreedte min 32px) met verhouding 0,62 en groeit naar het hele vlak terwijl de bovenkant van dat vlak van de
      onderrand naar de bovenrand van het scherm gaat, dus de bovenhoeken landen in de hoeken van het scherm. Daarna staat de
      foto vast en schuift de volgende sectie (Reviews) er met ronde bovenhoeken (radius/l) en een zachte schaduw overheen,
-     zoals Werk over Expertises (keuze van de gebruiker, niet in het prototype). site.js zet daarvoor kernwaarden_team
+     zoals Werk over Expertises (keuze van de gebruiker, niet in het prototype); de foto vervaagt daarbij naar de donkere
+     achtergrond van de sectie. site.js zet daarvoor kernwaarden_team
      sticky, maakt de wrapper een schermhoogte hoger en geeft Reviews een negatieve marge. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
      beweegt daarin langzamer dan de scroll, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
      de maat van het vlak, dus er is geen extra element nodig. Reduced motion en zonder site.js: de foto uit de class. */
@@ -644,6 +645,7 @@
           top: Math.min(H * 0.06, 56) * (1 - g) - o,
           width: sw + (W - sw) * g,
           height: h + extra,
+          opacity: 1 - 0.9 * clamp(-top / H, 0, 1),
           clipPath: 'inset(' + o + 'px 0px ' + (extra - o) + 'px 0px round ' + 20 * (1 - g) + 'px)'
         });
       }

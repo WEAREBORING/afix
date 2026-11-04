@@ -534,6 +534,7 @@
             var d = frame();
             checks['team: foto staat vast, volgende sectie schuift eroverheen'] = Math.abs(d.top) < 1 && Math.abs(next.getBoundingClientRect().top - H * 0.5) < 2 && parseFloat(next.style.marginTop) === -H && next.style.zIndex === '2' && !!next.style.borderTopLeftRadius;
             checks['team: parallax loopt door terwijl de foto vaststaat'] = d.cut < b.cut;
+            checks['team: foto vervaagt terwijl de sectie eroverheen schuift'] = Math.abs(parseFloat(getComputedStyle(img).opacity) - 0.55) < 0.02;
             done();
           }, 500);
         }, 1100);
