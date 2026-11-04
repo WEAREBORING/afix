@@ -1,4 +1,4 @@
-/* Afix site.js v0.68: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.69: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -954,12 +954,13 @@
   });
 
   /* Gele lijnen in Werk en Kennis (section_werk en section_kennis, staan alleen in Figma: 935:7806 en 935:8784). Werk: een
-     horizontale lijn op halve kaarthoogte (werk_list, zichtbaar tussen de kaarten) en een schuine lijn van 76% boven naar
+     horizontale lijn midden tussen de kop en de kaarten (werk_header en werk_list; in Figma op halve kaarthoogte, maar daar
+     is hij bijna niet te zien, keuze van de gebruiker) en een schuine lijn van 76% boven naar
      99,7% onder. Kennis: een boog vanuit de linkerrand van het scherm (keuze van de gebruiker, in Figma uit de bovenrand) achter de eerste kaart door naar 31% onderin. Ze tekenen zich met de scroll en
      dezelfde timing als Reviews (start als de bovenkant van de sectie op 55% van de schermhoogte staat, klaar op -35%), keuze
      van de gebruiker. Boog en schuine lijn schalen mee met de sectie. Reduced motion: direct getekend. */
   each('.section_werk, .section_kennis', function (section) {
-    var list = section.querySelector('.werk_list');
+    var head = section.querySelector('.werk_header'), list = head && section.querySelector('.werk_list');
     withGsap(function (gsap) {
       var layer = lineLayer(list ? 2 : 1, 'position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;'), lines = layer.paths, ticking = false, drawn = -1;
       section.insertBefore(layer.svg, section.firstChild);
@@ -969,7 +970,8 @@
         var w = section.offsetWidth, h = section.offsetHeight;
         layer.svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
         if (list) {
-          var box = list.getBoundingClientRect(), y = box.top - section.getBoundingClientRect().top + box.height / 2;
+          // Zonder de verschuiving van het binnenkomen van de kop
+          var y = (head.getBoundingClientRect().bottom - parseFloat(gsap.getProperty(head, 'y', 'px')) + list.getBoundingClientRect().top) / 2 - section.getBoundingClientRect().top;
           var x0 = w * 0.7646, x1 = w * 0.9972, over = (x1 - x0) / h * 10;
           lines[0].setAttribute('d', 'M -20 ' + y + ' L ' + (w + 20) + ' ' + y);
           lines[1].setAttribute('d', 'M ' + (x0 - over) + ' -10 L ' + (x1 + over) + ' ' + (h + 10));

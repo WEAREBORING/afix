@@ -132,7 +132,7 @@
   <div><div class="reviews_header">Kop van Reviews</div><div class="reviews_stack" style="height: 6rem; margin-top: 2rem"></div></div>
 </section>
 <div style="height: 120rem"></div>
-<section class="section_werk" style="position: relative; overflow: clip"><div><div class="werk_list" style="height: 8rem"></div></div></section>
+<section class="section_werk" style="position: relative; overflow: clip"><div><div class="werk_header" style="height: 4rem">Kop van Werk</div><div class="werk_list" style="height: 8rem; margin-top: 4rem"></div></div></section>
 <div style="height: 120rem"></div>
 <section class="section_kennis" style="position: relative; overflow: clip"><div style="height: 8rem"></div></section>
 <div style="height: 120rem"></div>
@@ -626,6 +626,8 @@
     var hero = $('[data-a-hero]'), exp = $('[data-a-pin]'), next = exp.nextElementSibling, werk = $('.section_werk'), kennis = $('.section_kennis');
     var a = hero.querySelector(':scope > svg path'), b = exp.querySelector(':scope > svg path'), w = werk.querySelectorAll('svg path'), k = kennis.querySelectorAll('svg path');
     var still = matchMedia('(prefers-reduced-motion: reduce)').matches, H = innerHeight;
+    var rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    checks['lijn: Werk horizontaal midden tussen kop en kaarten, ook als de kop nog binnen moet komen'] = Math.abs(parseFloat(w[0].getAttribute('d').split(' ')[2]) - 6 * rem) < 1;
     function off(p) { return parseFloat(getComputedStyle(p).strokeDashoffset); }
     function op(p) { return parseFloat(getComputedStyle(p).opacity); }
     function jump(y, then, ms) { window.scrollTo(0, y); setTimeout(then, ms || 400); }
