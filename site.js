@@ -1,4 +1,4 @@
-/* Afix site.js v0.74: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.75: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1532,34 +1532,48 @@
     if (current) nav.scrollLeft = current.offsetLeft - (nav.clientWidth - current.offsetWidth) / 2;
     withGsap(function (gsap) {
       var holder = document.createElement('div'), footer = document.querySelector('footer');
-      var floating = false, atFooter = false, away = false;
+      // p: 0 op zijn plek in de hero, 1 onderaan het scherm. drop: 1 bij de footer, omlaag uit beeld.
+      var move = { p: 0, drop: 0 }, floating = false, atFooter = false, dropped = false, fixed = false, dx = 0, dy = 0, start;
+      var fixedStyle = { position: 'fixed', left: '0', right: '0', bottom: 'max(1rem, env(safe-area-inset-bottom))', zIndex: '50', width: 'fit-content', margin: '0 auto', maxWidth: 'calc(100% - 2 * var(--_layout---space--page-x))' };
       holder.setAttribute('aria-hidden', 'true');
       function time(t) { return reduce.matches ? 0 : t; }
-      function setFloating(on) {
-        floating = on;
-        var first = nav.getBoundingClientRect();
+      function setFixed(on) {
+        fixed = on;
         if (on) {
-          holder.style.width = nav.offsetWidth + 'px';
-          holder.style.height = nav.offsetHeight + 'px';
-          if (!holder.parentNode) nav.parentNode.insertBefore(holder, nav);
-          nav.style.cssText = 'position: fixed; left: 0; right: 0; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 50; width: fit-content; margin: 0 auto; max-width: calc(100% - 2 * var(--_layout---space--page-x));';
-          var last = nav.getBoundingClientRect();
-          gsap.fromTo(nav, { x: first.left - last.left, y: first.top - last.top }, { x: 0, y: 0, duration: time(0.6), ease: 'power3.out', overwrite: 'auto' });
+          start = nav.getBoundingClientRect();
+          holder.style.width = start.width + 'px';
+          holder.style.height = start.height + 'px';
+          nav.parentNode.insertBefore(holder, nav);
+          Object.assign(nav.style, fixedStyle);
         } else {
-          var home = holder.getBoundingClientRect(), rest = nav.getBoundingClientRect();
-          gsap.to(nav, {
-            x: home.left - rest.left + gsap.getProperty(nav, 'x'), y: home.top - rest.top + gsap.getProperty(nav, 'y'), duration: time(0.5), ease: 'power3.out', overwrite: 'auto',
-            onComplete: function () { nav.removeAttribute('style'); if (holder.parentNode) holder.parentNode.removeChild(holder); }
-          });
+          Object.keys(fixedStyle).forEach(function (key) { nav.style[key] = ''; });
+          gsap.set(nav, { clearProps: 'transform' });
+          holder.parentNode.removeChild(holder);
+          dx = dy = 0;
         }
+      }
+      // Omlaag vanaf waar hij stond, anders gaat hij eerst met de hero mee omhoog. Terug naar de echte plek, elk frame
+      // opnieuw gemeten: de pagina scrolt dan nog door, dus die plek ligt tijdens de beweging niet vast.
+      function render() {
+        if (!fixed) return;
+        var home = floating ? start : holder.getBoundingClientRect(), now = nav.getBoundingClientRect(), restX = now.left - dx, restY = now.top - dy;
+        dx = (home.left - restX) * (1 - move.p);
+        dy = (home.top - restY) * (1 - move.p) + nav.offsetHeight * 2 * move.drop;
+        gsap.set(nav, { x: dx, y: dy });
       }
       function update() {
         var want = window.scrollY > 8;
-        if (want !== floating) { away = false; setFloating(want); }
-        if (floating && atFooter !== away) {
-          away = atFooter;
-          gsap.to(nav, { y: away ? nav.offsetHeight * 2 : 0, duration: time(0.45), ease: 'power3.out', overwrite: 'auto' });
+        if (want !== floating) {
+          floating = want;
+          if (want && !fixed) setFixed(true);
+          gsap.to(move, { p: want ? 1 : 0, duration: time(0.9), ease: 'power3.inOut', overwrite: 'auto', onUpdate: render, onComplete: function () { if (!want) setFixed(false); } });
         }
+        var drop = floating && atFooter;
+        if (drop !== dropped) {
+          dropped = drop;
+          gsap.to(move, { drop: drop ? 1 : 0, duration: time(0.45), ease: 'power3.out', overwrite: 'auto', onUpdate: render });
+        }
+        if (move.p < 1) render();
       }
       window.addEventListener('scroll', update, { passive: true });
       if (footer) new IntersectionObserver(function (entries) { atFooter = entries[0].isIntersecting; update(); }).observe(footer);
