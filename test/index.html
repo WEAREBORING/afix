@@ -471,7 +471,7 @@
   }
 
   function teamChecks(done) {
-    // Teamfoto: groeit met de scroll tot schermvullend, de hoeken landen in de hoeken; de pagina is dan weer licht
+    // Teamfoto: groeit met de scroll tot schermvullend, de hoeken landen in de hoeken; de pagina blijft donker
     var team = $('#kw-team'), img = team.querySelector('img'), H = innerHeight, W = document.documentElement.clientWidth;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       checks['team: reduced motion de foto uit de class'] = team.style.height === '' && img.getBoundingClientRect().width === team.offsetWidth;
@@ -487,7 +487,7 @@
       setTimeout(function () {
         var b = img.getBoundingClientRect();
         checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && parseFloat(getComputedStyle(img).borderTopLeftRadius) === 0;
-        checks['paginakleur: weer licht achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(245, 240, 232)';
+        checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
         done();
       }, 300);
     }, 300);

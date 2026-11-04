@@ -1,4 +1,4 @@
-/* Afix site.js v0.48: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.49: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -513,8 +513,8 @@
      groeit vanaf dezelfde kant, 1,4 keer zo snel; de slotlijn na de lijst hoort bij de laatste rij. Boven q 0,92 schuift de
      subtekst (kernwaarde_text) woord voor woord omhoog uit een masker, onder q 0,7 weer terug.
      Paginakleur: Cultuur en Kernwaarden delen een kleur die van licht naar donker loopt als de bovenkant van Kernwaarden
-     van 80% naar 30% van de schermhoogte gaat, en terug naar licht terwijl de teamfoto de laatste 40% naar boven schuift
-     (de foto vult dan het scherm, daarna volgt de lichte Reviews). site.js mengt daarvoor de thema-variabelen op die twee
+     van 80% naar 30% van de schermhoogte gaat. Anders dan het prototype blijft hij daarna donker, ook achter de teamfoto
+     (keuze van de gebruiker). site.js mengt daarvoor de thema-variabelen op die twee
      secties, zodat tekst, lijnen en knop meekleuren; Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced motion
      en zonder site.js: alles uit de class. */
   var values = [].slice.call(document.querySelectorAll('[data-a-value]'));
@@ -523,7 +523,7 @@
     function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
     function rgbOf(el, prop) { return (getComputedStyle(el)[prop].match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); }
     function mix(a, b, t) { return a.map(function (v, k) { return Math.round(v + (b[k] - v) * t); }).join(', '); }
-    var section = values[0].closest('section'), team = section.querySelector('[data-a-team]');
+    var section = values[0].closest('section');
     var cultuur = section.previousElementSibling, werk = cultuur.previousElementSibling, closing = values[0].parentElement.nextElementSibling;
     var light = rgbOf(cultuur, 'backgroundColor'), dark = rgbOf(section, 'backgroundColor'), ink = rgbOf(cultuur, 'color'), paper = rgbOf(section, 'color');
     var rows = values.map(function (item, i) {
@@ -535,7 +535,7 @@
       text.textContent = '';
       sentence.trim().split(/\s+/).forEach(function (w, k) {
         var mask = document.createElement('span'), word = document.createElement('span');
-        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em;';
+        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.2em; margin-bottom: -0.2em;';
         word.style.display = 'inline-block';
         word.textContent = w;
         mask.appendChild(word);
@@ -544,12 +544,12 @@
         inner.push(word);
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
-      gsap.set(inner, { yPercent: 120 });
+      gsap.set(inner, { yPercent: 130 });
       return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false };
     });
     function show(r, on) {
       r.shown = on;
-      gsap.to(r.inner, { yPercent: on ? 0 : 120, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
+      gsap.to(r.inner, { yPercent: on ? 0 : 130, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
     }
     var lastMix = -1, ticking = false;
     function paint(m) {
@@ -567,9 +567,7 @@
     function update() {
       ticking = false;
       var H = window.innerHeight, W = document.documentElement.clientWidth;
-      var f1 = clamp((H * 0.8 - section.getBoundingClientRect().top) / (H * 0.5), 0, 1);
-      var f2 = team ? clamp((H * 0.4 - team.getBoundingClientRect().top) / (H * 0.4), 0, 1) : 0;
-      var m = +(easeInOut(f1) * (1 - f2)).toFixed(3);
+      var m = +easeInOut(clamp((H * 0.8 - section.getBoundingClientRect().top) / (H * 0.5), 0, 1)).toFixed(3);
       if (m !== lastMix) { lastMix = m; paint(m); }
       rows.forEach(function (r) {
         var box = r.el.getBoundingClientRect(), q = clamp((H - box.top - box.height / 2) / (H * 0.45), 0, 1);
