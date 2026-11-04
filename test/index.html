@@ -173,8 +173,9 @@
   <div><aside data-a-toc id="dt-none"><div id="dt-none-block"><div data-a-toc-list><a href="#">Kop 2</a></div></div></aside><div data-a-toc-content><p>Geen koppen</p></div></div>
   <div style="display: flex">
     <aside data-a-toc id="dt-aside" style="position: sticky; top: 20px; align-self: flex-start; width: 10rem"><div data-a-toc-list id="dt-list"><a href="#" style="opacity: 0.2">Kop 2</a></div></aside>
-    <div data-a-toc-content id="dt-content"><h2>Eerste kop</h2><div style="height: 120vh"></div><h2>Caf&eacute; &amp; koffie</h2><div style="height: 120vh"></div><h2>Eerste kop</h2><div style="height: 120vh"></div></div>
+    <div data-a-toc-content id="dt-content"><h2>Eerste kop</h2><div style="height: 120vh"></div><h2>Caf&eacute; &amp; koffie</h2><div style="height: 120vh"></div><h2>Eerste kop</h2><div style="height: 10vh"></div></div>
   </div>
+  <div style="height: 120vh"></div>
 </section>
 
 <p id="result">Bezig...</p>
@@ -843,12 +844,16 @@
     window.scrollTo(0, heads[1].getBoundingClientRect().top + window.scrollY - innerHeight * 0.2);
     setTimeout(function () {
       checks['detail: de kop waar je bent is donker, de rest vaag'] = links[1].getAttribute('aria-current') === 'true' && getComputedStyle(links[1]).opacity === '1' && getComputedStyle(links[0]).opacity === '0.2';
+      window.scrollTo(0, window.scrollY + content.getBoundingClientRect().bottom - innerHeight * 0.55);
+      setTimeout(function () {
+      checks['detail: aan het eind van de tekst is de laatste kop actief'] = links[2].getAttribute('aria-current') === 'true';
       links[2].click();
       setTimeout(function () {
         checks['detail: klik scrollt tot onder de nav, met het anker in de url'] = location.hash === '#eerste-kop-2' && Math.abs(heads[2].getBoundingClientRect().top - 20) < 3;
         history.replaceState(null, '', location.pathname);
         done();
       }, 2500);
+      }, 700);
     }, 700);
   }
 

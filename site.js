@@ -1,4 +1,4 @@
-/* Afix site.js v0.78: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.79: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1535,10 +1535,10 @@
      desktop) is de kop waar je bent donker; op telefoon staat de lijst boven de tekst en is alles even donker. */
   each('[data-a-toc]', function (aside) {
     var list = aside.querySelector('[data-a-toc-list]'), content = aside.parentNode.querySelector('[data-a-toc-content]');
-    var sample = list && list.querySelector('a');
+    var sample = list && list.querySelector('a'), block = list && list.parentNode;
     if (!sample || !content) return;
     var heads = [].slice.call(content.querySelectorAll('h2')), used = {};
-    if (!heads.length) { list.parentNode.style.display = 'none'; return; }
+    if (!heads.length) { block.style.display = 'none'; return; }
     var links = heads.map(function (head) {
       var slug = head.textContent.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'kop';
       used[slug] = (used[slug] || 0) + 1;
@@ -1551,7 +1551,7 @@
         e.preventDefault();
         e.stopPropagation();
         history.replaceState(null, '', link.hash);
-        var y = head.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(aside).top) || 0);
+        var y = head.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(block).top) || 0);
         if (lenis) lenis.scrollTo(y); else window.scrollTo(0, y);
       });
       list.appendChild(link);
@@ -1562,9 +1562,11 @@
       var current = -1, queued = false;
       function update() {
         queued = false;
-        var sticky = getComputedStyle(aside).position === 'sticky', at = 0;
+        var sticky = getComputedStyle(block).position === 'sticky', at = 0;
         if (!sticky) { if (current !== -1) gsap.set(links, { clearProps: 'opacity' }); current = -1; return; }
         heads.forEach(function (head, i) { if (head.getBoundingClientRect().top <= innerHeight * 0.4) at = i; });
+        // Een korte laatste alinea haalt de lijn nooit: aan het eind van de tekst is de laatste kop actief
+        if (content.getBoundingClientRect().bottom <= innerHeight * 0.6) at = heads.length - 1;
         if (at === current) return;
         var first = current === -1;
         current = at;
