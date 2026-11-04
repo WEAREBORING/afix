@@ -1,4 +1,4 @@
-/* Afix site.js v0.86: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.87: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -158,8 +158,9 @@ var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .
 function initArrivals(root, a) {
   if (!reduce.matches) a.withGsap(function (gsap) {
     a.each(arrivals, function (el) {
+      var line = a.startLine(el);
       gsap.set(el, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
-      a.onceInView(el, 10, function () {
+      a.onceInView(el, line, function () {
         gsap.to(el, withBlur({ opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
       });
     });
@@ -240,6 +241,9 @@ function scope(root) {
     }, { rootMargin: '0px 0px -' + bottom + '% 0px' }));
     seen.observe(el);
   };
+  // Waar binnenkomen start, in procent boven de onderrand: 10, behalve als el bij het starten al in beeld staat. Dan meteen,
+  // anders blijft de onderkant van het eerste scherm leeg (zoals de filterbalk onder de hero op de kennispagina's)
+  a.startLine = function (el) { return el.getBoundingClientRect().top < window.innerHeight ? 0 : 10; };
   a.clean = function () {
     if (dead) return;
     dead = true;

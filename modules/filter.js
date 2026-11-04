@@ -97,8 +97,9 @@ export function init(container, a) {
         if (card.style.display === 'none') return;
         var before = 0, el = card;
         while ((el = el.previousElementSibling)) if (el.offsetTop === card.offsetTop) before++;
+        var line = a.startLine(card);
         gsap.set(card, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
-        onceInView(card, 10, function () {
+        onceInView(card, line, function () {
           gsap.to(card, withBlur({ opacity: 1, y: 0, delay: Math.min(before, 3) * 0.08, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
         });
       });

@@ -111,8 +111,9 @@ export function init(site) {
     var ghost = old.cloneNode(true), links = [].slice.call(ghost.querySelectorAll('a')), pill = ghost.querySelector('.kennis_tab-pill');
     var target = links[[].indexOf.call(fresh.querySelectorAll('a'), fresh.querySelector('.w--current'))];
     if (!pill || !target) return fresh.removeAttribute('data-a-kept');
-    var on = getComputedStyle(old.querySelector('.w--current')), off = getComputedStyle(old.querySelector('a:not(.w--current)'));
-    var ink = { on: { color: on.color, opacity: on.opacity }, off: { color: off.color, opacity: off.opacity } };
+    // De rustkleur van de andere links: de laagste dekking, want de link waarop je klikt staat nog in hover
+    var on = getComputedStyle(old.querySelector('.w--current')), rest = [].map.call(old.querySelectorAll('a:not(.w--current)'), function (link) { return getComputedStyle(link); });
+    var ink = { on: { color: on.color, opacity: on.opacity }, off: { color: rest[0].color, opacity: Math.min.apply(null, rest.map(function (cs) { return +cs.opacity; })) } };
     ghost.removeAttribute('data-a-subnav');
     ghost.style.cssText = 'position: fixed; left: ' + from.left + 'px; top: ' + from.top + 'px; width: ' + from.width + 'px; margin: 0; max-width: none; z-index: 50;';
     old.style.visibility = fresh.style.visibility = 'hidden';
