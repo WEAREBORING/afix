@@ -1,4 +1,4 @@
-/* Afix site.js v0.65: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.66: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -891,14 +891,17 @@
     return { svg: svg, paths: paths };
   }
 
-  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin), letterlijk het prototype (bgLine en size()): terwijl
-     de achtergrondvorm vervaagt tekent de lijn zich door de hero, en daarna langzaam verder terwijl Expertises vaststaat. Als
-     Werk eroverheen schuift, vervaagt hij. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde
-     pad in twee svg's achter de inhoud: een in de hero, die meescrollt, en een sticky in Expertises, die daarna vaststaat
-     (als de bgfx-laag van het prototype). In het prototype is de hero een schermhoogte; hier telt de werkelijke afstand
-     tot Expertises, want op telefoon is de hero hoger. Op een telefoon wordt alleen opnieuw gemeten als de breedte
-     verandert, zoals bij data-a-pin (de adresbalk verandert de hoogte). site.js maakt de svg's zelf; er is geen
-     Webflow-element voor nodig. Reduced motion: direct getekend. */
+  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin). Timing en formules zijn van het prototype (bgLine en
+     size()): terwijl de achtergrondvorm vervaagt tekent de lijn zich door de hero, en daarna langzaam verder terwijl
+     Expertises vaststaat. Als Werk eroverheen schuift, vervaagt hij. Het pad wijkt af (keuze van de gebruiker): in de hero
+     volgt de lijn de rand van de vorm linksonder (hero-home_background, dezelfde coördinaten en schaal als de svg daar). Net
+     boven de onderkant van de hero laat hij de rand los en buigt hij naar de eindpunten van het prototype in Expertises,
+     rechts van de kop langs. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde pad in twee
+     svg's achter de inhoud: een in de hero, die meescrollt, en een sticky in Expertises, die daarna vaststaat (als de
+     bgfx-laag van het prototype). In het prototype is de hero een schermhoogte; hier telt de werkelijke afstand tot Expertises,
+     want op telefoon is de hero hoger. Op een telefoon wordt alleen opnieuw gemeten als de breedte verandert, zoals bij
+     data-a-pin (de adresbalk verandert de hoogte). site.js maakt de svg's zelf; er is geen Webflow-element voor nodig.
+     Reduced motion: direct getekend. */
   each('[data-a-hero]', function (hero) {
     var exp = document.querySelector('[data-a-pin]'), next = exp && exp.nextElementSibling;
     if (!next) return;
@@ -908,14 +911,20 @@
       var inExp = lineLayer(1, 'display: block; position: sticky; top: 0; width: 100%; pointer-events: none; z-index: -1;');
       var paths = [inHero.paths[0], inExp.paths[0]], H = 1, stack = 1, share = 0.5, width = 0, ticking = false, shown = '';
       hero.appendChild(inHero.svg);
-      exp.appendChild(inExp.svg);
+      // Als eerste kind: sticky begint op zijn plek in de pagina, dus onder de inhoud zou hij pas later vast gaan staan
+      exp.insertBefore(inExp.svg, exp.firstChild);
       function size() {
         var W = document.documentElement.clientWidth, top = hero.getBoundingClientRect().top + window.scrollY;
         H = window.innerHeight;
         width = window.innerWidth;
         stack = exp.getBoundingClientRect().top + window.scrollY;
-        function P(x, y) { return x * W + ' ' + (y <= 1 ? y * stack : stack + (y - 1) * H); }
-        var line = 'M ' + P(0.52, (top - 30) / stack) + ' C ' + P(0.62, top / stack + 0.07) + ' ' + P(0.92, 0.26) + ' ' + P(0.88, 0.5) + ' C ' + P(0.85, 0.7) + ' ' + P(0.6, 0.74) + ' ' + P(0.66, 1) + ' C ' + P(0.71, 1.22) + ' ' + P(0.86, 1.62) + ' ' + P(0.92, 2.04);
+        // De rand van de vorm, in de coördinaten van de svg in de hero (slice, midden onder verankerd op de hero); de
+        // lijn start net links buiten beeld. De laatste bocht is het eerste driekwart van de bocht uit die svg
+        var scale = Math.max(hero.offsetWidth / 1440, hero.offsetHeight / 705);
+        function edge(x, y) { return [W / 2 + (x - 3240) * scale, stack + (y - 3746) * scale]; }
+        function P(x, y) { return x * W + ' ' + (stack + (y - 1) * H); }
+        var from = edge(3222, 3672.31), to = [0.92 * W, stack + 1.04 * H], reach = Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.65 / Math.SQRT2;
+        var line = 'M ' + edge(2510, 3489.05).join(' ') + ' L ' + edge(2763.25, 3486.45).join(' ') + ' C ' + edge(2832.09, 3485.69).join(' ') + ' ' + edge(2872.75, 3483.63).join(' ') + ' ' + edge(2941.76, 3502.78).join(' ') + ' C ' + edge(3042.86, 3529.94).join(' ') + ' ' + edge(3138.34, 3587.97).join(' ') + ' ' + from.join(' ') + ' C ' + (from[0] + reach) + ' ' + (from[1] + reach) + ' ' + P(0.86, 1.62) + ' ' + to.join(' ');
         paths.forEach(function (p) { p.setAttribute('d', line); });
         inHero.svg.style.top = -top + 'px';
         inHero.svg.style.height = stack + 'px';

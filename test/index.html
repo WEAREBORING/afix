@@ -418,17 +418,17 @@
     // Vastzetten (op elke breedte, niet bij reduced motion): de rij schuift met de scroll en de volgende sectie schuift erover
     var sec = $('[data-a-pin]'), row = $('.pinrow'), next = $('#na-pin');
     var pinned = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var set = !!sec.style.height && sec.firstElementChild.style.position === 'sticky' && parseFloat(next.style.marginTop) < 0;
+    var set = !!sec.style.height && sec.querySelector(':scope > div').style.position === 'sticky' && parseFloat(next.style.marginTop) < 0;
     checks['pin: vast, gewone rij bij reduced motion'] = pinned ? set : !set && !sec.style.height && !next.style.marginTop;
     if (!pinned) return expertiseChecks(done);
-    var top = parseFloat(sec.firstElementChild.style.top), H = innerHeight;
+    var top = parseFloat(sec.querySelector(':scope > div').style.top), H = innerHeight;
     function to(secTop) { window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - secTop); }
     // De sectie komt onderin binnen: de kaarten staan nog rechts buiten beeld
     to(H);
     setTimeout(function () {
       checks['pin: kaarten starten rechts buiten beeld'] = row.firstElementChild.getBoundingClientRect().left >= document.documentElement.clientWidth - 2 && row.scrollLeft === 0;
       // Eind van het vaststaan: de rij is helemaal doorgeschoven
-      to(top - (parseFloat(sec.style.height) - sec.firstElementChild.offsetHeight - H));
+      to(top - (parseFloat(sec.style.height) - sec.querySelector(':scope > div').offsetHeight - H));
       setTimeout(function () {
         var endX = gsap.getProperty(row, 'x');
         checks['pin: rij aan het eind helemaal doorgeschoven'] = row.lastElementChild.getBoundingClientRect().right <= document.documentElement.clientWidth + 2 && endX < 0;
@@ -630,8 +630,8 @@
     function op(p) { return parseFloat(getComputedStyle(p).opacity); }
     function jump(y, then, ms) { window.scrollTo(0, y); setTimeout(then, ms || 400); }
     var top = exp.getBoundingClientRect().top + window.scrollY;
-    checks['lijn: hetzelfde pad in hero en Expertises, verborgen en achter de inhoud'] = !!a && !!b && a.getAttribute('d') === b.getAttribute('d') && /^M [\d.-]+ [\d.-]+ C/.test(a.getAttribute('d')) && a.ownerSVGElement.getAttribute('aria-hidden') === 'true' && getComputedStyle(b.ownerSVGElement).zIndex === '-1';
-    checks['lijn: sticky in Expertises, als laatste kind'] = getComputedStyle(b.ownerSVGElement).position === 'sticky' && exp.lastElementChild === b.ownerSVGElement;
+    checks['lijn: hetzelfde pad in hero en Expertises, verborgen en achter de inhoud'] = !!a && !!b && a.getAttribute('d') === b.getAttribute('d') && /^M [\d.-]+ [\d.-]+ L/.test(a.getAttribute('d')) && a.ownerSVGElement.getAttribute('aria-hidden') === 'true' && getComputedStyle(b.ownerSVGElement).zIndex === '-1';
+    checks['lijn: sticky in Expertises, als eerste kind'] = getComputedStyle(b.ownerSVGElement).position === 'sticky' && exp.firstElementChild === b.ownerSVGElement;
     checks['lijn: Werk twee lijnen en Kennis een, inhoud erboven'] = w.length === 2 && k.length === 1 && werk.firstElementChild.tagName.toLowerCase() === 'svg' && werk.children[1].style.position === 'relative' && kennis.children[1].style.position === 'relative';
     if (still) {
       checks['lijn: reduced motion direct getekend en zichtbaar'] = off(a) === 0 && off(b) === 0 && op(a) === 1 && off(w[0]) === 0 && off(w[1]) === 0 && off(k[0]) === 0;
@@ -642,12 +642,13 @@
       jump(top * 0.4, function () {
         var half = off(a), fade = op(a);
         jump(top, function () {
-          var rest = off(b);
+          var rest = off(b), pinned = b.ownerSVGElement.getBoundingClientRect().top;
           jump(top + (next.getBoundingClientRect().top + window.scrollY - top - H) / 2, function () {
             var mid = off(b);
             jump(next.getBoundingClientRect().top + window.scrollY + 10, function () {
               checks['lijn: nog niet zichtbaar bovenaan'] = start[0] === 1 && start[1] === 0;
               checks['lijn: tekent zich door de hero, zichtbaar als de vorm vervaagt'] = half > 0 && half < 1 && fade === 1 && rest < half;
+              checks['lijn: staat vast zodra Expertises bovenaan komt'] = Math.abs(pinned) < 2;
               checks['lijn: tekent verder tijdens Expertises en is af als Werk komt'] = mid > 0 && mid < rest && off(b) === 0;
               checks['lijn: vervaagt als Werk eroverheen schuift'] = op(b) === 0;
               var wt = werk.getBoundingClientRect().top + window.scrollY, kt = kennis.getBoundingClientRect().top + window.scrollY;
