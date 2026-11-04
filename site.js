@@ -1,4 +1,4 @@
-/* Afix site.js v0.69: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.70: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -891,13 +891,12 @@
     return { svg: svg, paths: paths };
   }
 
-  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin). De uiteinden en het vervagen zijn van het prototype (bgLine en
-     size()): terwijl de achtergrondvorm vervaagt tekent de lijn zich, en als Werk eroverheen schuift vervaagt hij. Twee
-     afwijkingen, keuze van de gebruiker. De lijn tekent in een keer door, zonder pauze op de grens, en is af als Expertises
-     bovenaan komt: dan loopt hij in beeld door tot de onderkant van het scherm. En in de hero
-     volgt de lijn de rand van de vorm linksonder (hero-home_background, dezelfde coördinaten en schaal als de svg daar). Net
-     boven de onderkant van de hero laat hij de rand los en buigt hij naar de eindpunten van het prototype in Expertises,
-     rechts van de kop langs. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde pad in twee
+  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin). Het vervagen komt uit het prototype (bgLine en size()):
+     terwijl de achtergrondvorm vervaagt tekent de lijn zich, en als Werk eroverheen schuift vervaagt hij. Twee afwijkingen,
+     keuze van de gebruiker. De lijn tekent in een keer door, zonder pauze op de grens, en is af als Expertises bovenaan komt:
+     dan loopt hij in beeld door tot de onderkant van het scherm. En de lijn volgt helemaal de rand van de vorm linksonder
+     (hero-home_background en expertises_background, dezelfde coördinaten en schaal als de svg's daar), dus op een breed
+     scherm achter het einde van de kop van Expertises langs. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde pad in twee
      svg's achter de inhoud: een in de hero, die meescrollt, en een sticky in Expertises, die daarna vaststaat (als de
      bgfx-laag van het prototype). In het prototype is de hero een schermhoogte; hier telt de werkelijke afstand tot Expertises,
      want op telefoon is de hero hoger. Op een telefoon wordt alleen opnieuw gemeten als de breedte verandert, zoals bij
@@ -919,13 +918,12 @@
         H = window.innerHeight;
         width = window.innerWidth;
         stack = exp.getBoundingClientRect().top + window.scrollY;
-        // De rand van de vorm, in de coördinaten van de svg in de hero (slice, midden onder verankerd op de hero); de
-        // lijn start net links buiten beeld. De laatste bocht is het eerste driekwart van de bocht uit die svg
+        // De rand van de vorm, in de coördinaten van de svg's (slice, midden verankerd op de grens van hero en Expertises); de
+        // lijn start net links buiten beeld
         var scale = Math.max(hero.offsetWidth / 1440, hero.offsetHeight / 705);
-        function edge(x, y) { return [W / 2 + (x - 3240) * scale, stack + (y - 3746) * scale]; }
-        function P(x, y) { return x * W + ' ' + (stack + (y - 1) * H); }
-        var from = edge(3222, 3672.31), to = [0.92 * W, stack + 1.04 * H], reach = Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.65 / Math.SQRT2;
-        var line = 'M ' + edge(2510, 3489.05).join(' ') + ' L ' + edge(2763.25, 3486.45).join(' ') + ' C ' + edge(2832.09, 3485.69).join(' ') + ' ' + edge(2872.75, 3483.63).join(' ') + ' ' + edge(2941.76, 3502.78).join(' ') + ' C ' + edge(3042.86, 3529.94).join(' ') + ' ' + edge(3138.34, 3587.97).join(' ') + ' ' + from.join(' ') + ' C ' + (from[0] + reach) + ' ' + (from[1] + reach) + ' ' + P(0.86, 1.62) + ' ' + to.join(' ');
+        var line = 'M 2510 3489.05 L 2763.25 3486.45 C 2832.09 3485.69 2872.75 3483.63 2941.76 3502.78 C 3076.56 3538.99 3201.37 3630.08 3301.47 3765.26 C 3348.73 3829.54 3389.55 3903.02 3422.73 3983.57 C 3448.34 4046.01 3463.73 4101.35 3483.79 4167.59 L 3757.87 5072.89'.replace(/([\d.]+) ([\d.]+)/g, function (m, x, y) {
+          return W / 2 + (x - 3240) * scale + ' ' + (stack + (y - 3746) * scale);
+        });
         paths.forEach(function (p) { p.setAttribute('d', line); });
         inHero.svg.style.top = -top + 'px';
         inHero.svg.style.height = stack + 'px';
