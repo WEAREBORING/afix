@@ -1,4 +1,4 @@
-/* Afix site.js v0.52: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.53: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -516,7 +516,8 @@
      tussenkleur eindigen). Komt de bovenkant van Kernwaarden boven 55% van de schermhoogte, dan loopt de achtergrond van
      Cultuur en Kernwaarden in 0,8 seconde van licht naar donker; scrol je terug tot onder 65%, dan weer terug. Daarna blijft
      hij donker, ook achter de teamfoto. site.js mengt daarvoor de thema-variabelen: bij Cultuur kleuren tekst, lijnen en
-     knop mee, de tekst van Kernwaarden blijft altijd wit. Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced
+     knop mee, de tekst van Kernwaarden blijft altijd wit. De eyebrow komt binnen als de hero-elementen, kort nadat de
+     wissel start (wit op licht is onzichtbaar), en gaat bij het teruggaan weer weg. Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced
      motion en zonder site.js: alles uit de class. */
   var values = [].slice.call(document.querySelectorAll('[data-a-value]'));
   if (values.length && !reduce.matches) withGsap(function (gsap) {
@@ -524,7 +525,9 @@
     function rgbOf(el, prop) { return (getComputedStyle(el)[prop].match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); }
     function mix(a, b, t) { return a.map(function (v, k) { return Math.round(v + (b[k] - v) * t); }).join(', '); }
     var section = values[0].closest('section');
-    var cultuur = section.previousElementSibling, werk = cultuur.previousElementSibling, closing = values[0].parentElement.nextElementSibling;
+    var cultuur = section.previousElementSibling, werk = cultuur.previousElementSibling;
+    var closing = values[0].parentElement.nextElementSibling, eyebrow = values[0].parentElement.previousElementSibling;
+    var away = { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' };
     var light = rgbOf(cultuur, 'backgroundColor'), dark = rgbOf(section, 'backgroundColor'), ink = rgbOf(cultuur, 'color'), paper = rgbOf(section, 'color');
     var rows = values.map(function (item, i) {
       var dir = i % 2 ? -1 : 1, rules = [item.querySelector('.kernwaarde_rule')];
@@ -570,8 +573,15 @@
       var H = window.innerHeight, W = document.documentElement.clientWidth;
       // Twee grenzen, zodat de kleur niet heen en weer springt als je precies op de grens stilstaat
       var top = section.getBoundingClientRect().top, wanted = top < H * (isDark ? 0.65 : 0.55);
-      if (isDark === null) { theme.m = wanted ? 1 : 0; paint(); }
-      else if (wanted !== isDark) gsap.to(theme, { m: wanted ? 1 : 0, duration: 0.8, ease: 'power2.inOut', overwrite: true, onUpdate: paint });
+      if (isDark === null) {
+        theme.m = wanted ? 1 : 0;
+        paint();
+        if (eyebrow && !wanted) gsap.set(eyebrow, Object.assign({}, away));
+      } else if (wanted !== isDark) {
+        gsap.to(theme, { m: wanted ? 1 : 0, duration: 0.8, ease: 'power2.inOut', overwrite: true, onUpdate: paint });
+        if (eyebrow && wanted) gsap.to(eyebrow, { opacity: 1, y: 0, filter: 'blur(0rem)', delay: 0.3, duration: 1.1, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform,filter' });
+        else if (eyebrow) gsap.to(eyebrow, Object.assign({ duration: 0.3, ease: 'power2.out', overwrite: true }, away));
+      }
       isDark = wanted;
       rows.forEach(function (r) {
         var box = r.el.getBoundingClientRect(), q = clamp((H * r.start - box.top - box.height / 2) / (H * 0.45), 0, 1);

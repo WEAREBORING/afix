@@ -114,7 +114,7 @@
 
 <section id="kw-voor" style="height: 20rem"></section>
 <section id="kernwaarden" style="overflow: clip"><div class="padding-section"><div style="display: flex; flex-direction: column; align-items: center">
-  <div>DNA</div>
+  <div id="kw-eyebrow">DNA</div>
   <div style="width: 100%">
     <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Nuchter</h3><p class="kernwaarde_text" style="text-align: center">Geen blabla. Gewoon keuzes die blijven werken.</p></div>
     <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Direct</h3><p class="kernwaarde_text" style="text-align: center">Minder schakels.</p></div>
@@ -450,6 +450,7 @@
       checks['kernwaarden: om en om buiten beeld, lijn op 0'] = x(title) > W / 2 && x(second) < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0;
       checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
       checks['kernwaarden: subtekst helemaal verborgen in het masker'] = [].every.call(text.children, function (m) { return m.firstElementChild.getBoundingClientRect().top >= m.getBoundingClientRect().bottom && getComputedStyle(m.firstElementChild).visibility === 'hidden'; });
+      checks['kernwaarden: eyebrow start onzichtbaar'] = getComputedStyle($('#kw-eyebrow')).opacity === '0';
       checks['paginakleur: begint licht, kernwaarden al wit'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(255, 255, 255)';
       to(sec, H * 0.5);
       setTimeout(function () {
@@ -458,6 +459,7 @@
         // Niet verder scrollen: de kleur moet vanzelf helemaal donker worden, ook de tekst van de sectie ervoor
         setTimeout(function () {
           checks['paginakleur: eindigt vanzelf donker'] = bg(sec) === 'rgb(39, 51, 39)' && bg(before) === 'rgb(39, 51, 39)' && getComputedStyle(before).color === 'rgb(255, 255, 255)';
+          checks['kernwaarden: eyebrow komt binnen'] = !$('#kw-eyebrow').style.transform && getComputedStyle($('#kw-eyebrow')).opacity === '1';
           // De eerste rij start later: staat hij op 85% van het scherm, dan is het woord nog buiten beeld
           to(items[0], H * 0.85);
           setTimeout(function () {
@@ -471,12 +473,13 @@
               to(sec, H * 0.9);
               setTimeout(function () {
                 checks['paginakleur: terugscrollen wordt weer licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)';
+                checks['kernwaarden: eyebrow gaat weer weg'] = getComputedStyle($('#kw-eyebrow')).opacity === '0';
                 done();
               }, 1100);
             }, 1400);
           }, 1300);
           }, 300);
-        }, 900);
+        }, 1200);
       }, 350);
     }, 300);
   }
