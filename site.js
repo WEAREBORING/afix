@@ -1,4 +1,4 @@
-/* Afix site.js v0.55: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.56: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -667,7 +667,7 @@
         active = card;
         if (card && first) parts.forEach(function (p) { if (p.content) p.content.style.width = p.content.offsetWidth + 'px'; });
         gsap.to(cols, {
-          a: card === cards[0] ? 1.5 : 1, b: card === cards[1] ? 1.5 : 1, duration: 0.6 * t, ease: 'power3.out', overwrite: true, onUpdate: draw,
+          a: card === cards[0] ? 1.5 : 1, b: card === cards[1] ? 1.5 : 1, duration: 0.4 * t, ease: 'power4.out', overwrite: true, onUpdate: draw,
           onComplete: function () {
             draw();
             if (active) return;
@@ -678,7 +678,7 @@
         parts.forEach(function (p) {
           if (!p.img) return;
           var on = card && p.card !== card;
-          gsap.to(p.img, { opacity: on ? 1 : 0, duration: 0.45 * t, ease: 'power2.out', overwrite: true, onComplete: card ? null : function () { gsap.set(p.img, { clearProps: 'opacity' }); } });
+          gsap.to(p.img, { opacity: on ? 1 : 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: card ? null : function () { gsap.set(p.img, { clearProps: 'opacity' }); } });
         });
       }
       cards.forEach(function (card) {
