@@ -90,7 +90,7 @@
 <div data-a-case class="case"><div class="case-card_logo-view"><div class="case-card_tags">Label</div>Logo<p class="case-card_text">Omschrijving</p></div></div>
 
 <section data-a-hero="section"><div class="hero-home_component">
-  <div class="hero-home_heading"><div><div class="tag">Eyebrow</div></div><h1><span>Kopregel</span><br><span class="text-style-accent">Accent</span></h1></div>
+  <div class="hero-home_heading"><div><div class="tag">Eyebrow</div></div><h1><span>Groei begint met scherpe keuzes.</span><br><span class="text-style-accent">Accent</span></h1></div>
   <div class="hero-home_awards"><div class="award">8,61</div><div class="award">4x</div></div>
   <div class="hero-home_cards">
     <div data-a-challenge="item" class="hero-card"><a href="#" class="hero-card_link"><div class="hero-card_number">01</div><div class="hero-card_title">Een</div><div class="hero-card_detail"><p class="hero-card_text">Tekst</p></div></a><div class="hero-card_image-left"></div><div class="hero-card_image-right"></div></div>
@@ -333,7 +333,34 @@
       strip.dispatchEvent(new PointerEvent('pointerleave'));
       setTimeout(function () {
         checks['hero: uitdaging terug naar de class'] = [].every.call(cards, function (k) { return !k.style.flexGrow && !k.style.backgroundColor && !k.querySelector('.hero-card_detail').getAttribute('style') && getComputedStyle(k.querySelector('.hero-card_image-left')).opacity === '0' && Math.abs(k.offsetWidth - cards[0].offsetWidth) < 1; });
-        quickChecks();
+        sharpChecks(quickChecks);
+      }, 900);
+    }
+    function sharpChecks(next) {
+      // "scherpe": wazig in rust, scherp bij de cursor en als een uitdaging open staat; op touch gewoon tekst
+      var word = $('[data-a-hero] h1 [aria-label="scherpe"]'), onTouch = matchMedia('(hover: none)').matches;
+      if (onTouch || !desktop) {
+        checks['hero: scherpe zonder cursor gewoon scherp'] = onTouch ? !word : !word || [].every.call(word.children, function (l) { return !/blur/.test(l.style.filter); });
+        return next();
+      }
+      var letters = word.children, r = word.getBoundingClientRect();
+      function blurred() { return [].filter.call(letters, function (l) { return /blur/.test(l.style.filter); }).length; }
+      function point(x, y) { window.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y })); }
+      checks['hero: scherpe los in letters, tekst ongewijzigd'] = letters.length === 7 && word.parentElement.textContent === 'Groei begint met scherpe keuzes.';
+      point(r.left + r.width / 2, r.top + 2000);
+      setTimeout(function () {
+        checks['hero: scherpe wazig als de cursor ver weg is'] = blurred() === 7;
+        point(r.left + r.width / 2, r.top + r.height / 2);
+        setTimeout(function () {
+          checks['hero: scherpe scherp bij de cursor'] = blurred() === 0;
+          point(r.left + r.width / 2, r.top + 2000);
+          cards[0].dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+          setTimeout(function () {
+            checks['hero: scherpe scherp als een uitdaging open staat'] = blurred() === 0;
+            strip.dispatchEvent(new PointerEvent('pointerleave'));
+            setTimeout(next, 900);
+          }, 900);
+        }, 900);
       }, 900);
     }
     function quickChecks() {

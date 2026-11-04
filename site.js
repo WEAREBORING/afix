@@ -1,4 +1,4 @@
-/* Afix site.js v0.63: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.64: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -127,6 +127,56 @@
     document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { closeDrops(); setMenu(false); } });
   });
 
+  /* Het woord "scherpe" in de kop van de hero, zoals het prototype: het staat licht wazig en wordt letter voor letter scherp
+     als de cursor dichterbij komt, en helemaal scherp zodra een uitdaging open staat. Alleen desktop met muis: zonder
+     cursor zou het woord wazig blijven. Staat het woord er niet (meer) in, dan gebeurt er niets. */
+  function sharpWord(gsap, h1, desktop, open) {
+    var word = 'scherpe', node = null;
+    if (!h1 || touchDevice.matches) return;
+    var walk = document.createTreeWalker(h1, NodeFilter.SHOW_TEXT);
+    while (!node && walk.nextNode()) if (walk.currentNode.data.indexOf(word) > -1) node = walk.currentNode;
+    if (!node) return;
+    var rest = node.splitText(node.data.indexOf(word));
+    rest.splitText(word.length);
+    var el = document.createElement('span');
+    el.setAttribute('aria-label', word);
+    el.style.cssText = 'display: inline-block; white-space: nowrap;';
+    var letters = word.split('').map(function (c) {
+      var s = document.createElement('span');
+      s.textContent = c;
+      s.setAttribute('aria-hidden', 'true');
+      s.style.cssText = 'display: inline-block; will-change: filter;';
+      el.appendChild(s);
+      return { el: s, cur: 1 };
+    });
+    rest.parentNode.replaceChild(el, rest);
+    var radius = 260, maxBlur = 6.5, ease = reduce.matches ? 1 : 0.14, ptr = { x: 0, y: 0, active: false }, busy = true, held = false;
+    function smooth(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+    function move(e) { ptr.x = e.clientX; ptr.y = e.clientY; ptr.active = true; busy = true; }
+    window.addEventListener('pointermove', move, { passive: true });
+    window.addEventListener('pointerdown', move, { passive: true });
+    document.documentElement.addEventListener('pointerleave', function () { ptr.active = false; busy = true; });
+    gsap.ticker.add(function () {
+      var focus = open() || !desktop.matches;
+      if (focus !== held) { held = focus; busy = true; }
+      if (!busy) return;
+      var max = maxBlur * parseFloat(getComputedStyle(el).fontSize) / 80, moving = false;
+      letters.forEach(function (L) {
+        var t = 1;
+        if (focus) t = 0;
+        else if (ptr.active) {
+          var r = L.el.getBoundingClientRect();
+          t = smooth(radius * 0.22, radius, Math.hypot(ptr.x - (r.left + r.width / 2), ptr.y - (r.top + r.height / 2)));
+        }
+        L.cur += (t - L.cur) * ease;
+        if (Math.abs(L.cur - t) < 0.002) L.cur = t; else moving = true;
+        gsap.set(L.el, { filter: L.cur < 0.01 ? 'none' : 'blur(' + (L.cur * max).toFixed(2) + 'px)', opacity: 1 - L.cur * 0.15 });
+      });
+      // Stil: niets te doen tot de muis weer beweegt
+      busy = moving;
+    });
+  }
+
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
      hero-home_component, traag beginnend en zacht uitlopend, en is weg als de kop van de volgende sectie op de helft van
@@ -205,6 +255,7 @@
       if (!strip || !cards.length) return;
       var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
       var active = null;
+      sharpWord(gsap, h1, desktop, function () { return active; });
       var contrast = getComputedStyle(strip).getPropertyValue('--_theme---action--contrast').trim();
       var accent = getComputedStyle(strip).getPropertyValue('--_theme---surface--accent').trim();
       var parts = cards.map(function (c) {
