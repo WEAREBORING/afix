@@ -1,4 +1,4 @@
-/* Afix site.js v0.51: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.52: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -545,7 +545,8 @@
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
       gsap.set(inner, { yPercent: 130, visibility: 'hidden' });
-      return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false };
+      // De eerste rij start later dan in het prototype, pas als de achtergrond donker wordt: wit op licht is onzichtbaar
+      return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false, start: i ? 1 : 0.8 };
     });
     function show(r, on) {
       r.shown = on;
@@ -573,7 +574,7 @@
       else if (wanted !== isDark) gsap.to(theme, { m: wanted ? 1 : 0, duration: 0.8, ease: 'power2.inOut', overwrite: true, onUpdate: paint });
       isDark = wanted;
       rows.forEach(function (r) {
-        var box = r.el.getBoundingClientRect(), q = clamp((H - box.top - box.height / 2) / (H * 0.45), 0, 1);
+        var box = r.el.getBoundingClientRect(), q = clamp((H * r.start - box.top - box.height / 2) / (H * 0.45), 0, 1);
         gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)) });
         gsap.set(r.rules, { scaleX: easeOut(clamp(q * 1.4, 0, 1)) });
         if (!r.shown && q > 0.92) show(r, true);

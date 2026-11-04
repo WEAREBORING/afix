@@ -458,7 +458,10 @@
         // Niet verder scrollen: de kleur moet vanzelf helemaal donker worden, ook de tekst van de sectie ervoor
         setTimeout(function () {
           checks['paginakleur: eindigt vanzelf donker'] = bg(sec) === 'rgb(39, 51, 39)' && bg(before) === 'rgb(39, 51, 39)' && getComputedStyle(before).color === 'rgb(255, 255, 255)';
-          // Rij helemaal binnen
+          // De eerste rij start later: staat hij op 85% van het scherm, dan is het woord nog buiten beeld
+          to(items[0], H * 0.85);
+          setTimeout(function () {
+          checks['kernwaarden: eerste rij start later'] = x(title) > W / 2;
           to(items[0], H * 0.3);
           setTimeout(function () {
             checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1 && getComputedStyle(text.querySelector('span span')).visibility === 'visible';
@@ -472,6 +475,7 @@
               }, 1100);
             }, 1400);
           }, 1300);
+          }, 300);
         }, 900);
       }, 350);
     }, 300);
