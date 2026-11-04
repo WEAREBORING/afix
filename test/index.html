@@ -132,6 +132,10 @@
   <div><div class="reviews_header">Kop van Reviews</div><div class="reviews_stack" style="height: 6rem; margin-top: 2rem"></div></div>
 </section>
 <div style="height: 120rem"></div>
+<section class="section_werk" style="position: relative; overflow: clip"><div><div class="werk_list" style="height: 8rem"></div></div></section>
+<div style="height: 120rem"></div>
+<section class="section_kennis" style="position: relative; overflow: clip"><div style="height: 8rem"></div></section>
+<div style="height: 120rem"></div>
 <div class="footer_cta-list">
   <div class="footer_cta-card"><div class="footer_cta-content"><h2>Voel jij het ook?</h2><p>Schroom niet en maak een afspraak, je komt er hoe dan ook wijzer uit.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
   <div class="footer_cta-card-dark"><div class="footer_cta-content"><h2>Eerst zien wat we kunnen?</h2><p>Zie hoe we met onze partners bouwen aan groei.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
@@ -303,7 +307,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { footerChecks(report); }); }); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(report); }); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -615,6 +619,59 @@
         }, 1300);
       }, 700);
     }, 300);
+  }
+
+  function lineChecks(done) {
+    // Gele lijn door hero en Expertises (hetzelfde pad in twee svg's), en de lijnen in Werk en Kennis
+    var hero = $('[data-a-hero]'), exp = $('[data-a-pin]'), next = exp.nextElementSibling, werk = $('.section_werk'), kennis = $('.section_kennis');
+    var a = hero.querySelector(':scope > svg path'), b = exp.querySelector(':scope > svg path'), w = werk.querySelectorAll('svg path'), k = kennis.querySelectorAll('svg path');
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches, H = innerHeight;
+    function off(p) { return parseFloat(getComputedStyle(p).strokeDashoffset); }
+    function op(p) { return parseFloat(getComputedStyle(p).opacity); }
+    function jump(y, then, ms) { window.scrollTo(0, y); setTimeout(then, ms || 400); }
+    var top = exp.getBoundingClientRect().top + window.scrollY;
+    checks['lijn: hetzelfde pad in hero en Expertises, verborgen en achter de inhoud'] = !!a && !!b && a.getAttribute('d') === b.getAttribute('d') && /^M [\d.-]+ [\d.-]+ C/.test(a.getAttribute('d')) && a.ownerSVGElement.getAttribute('aria-hidden') === 'true' && getComputedStyle(b.ownerSVGElement).zIndex === '-1';
+    checks['lijn: sticky in Expertises, als laatste kind'] = getComputedStyle(b.ownerSVGElement).position === 'sticky' && exp.lastElementChild === b.ownerSVGElement;
+    checks['lijn: Werk twee lijnen en Kennis een, inhoud erboven'] = w.length === 2 && k.length === 1 && werk.firstElementChild.tagName.toLowerCase() === 'svg' && werk.children[1].style.position === 'relative' && kennis.children[1].style.position === 'relative';
+    if (still) {
+      checks['lijn: reduced motion direct getekend en zichtbaar'] = off(a) === 0 && off(b) === 0 && op(a) === 1 && off(w[0]) === 0 && off(w[1]) === 0 && off(k[0]) === 0;
+      return done();
+    }
+    jump(0, function () {
+      var start = [off(a), op(a)];
+      jump(top * 0.4, function () {
+        var half = off(a), fade = op(a);
+        jump(top, function () {
+          var rest = off(b);
+          jump(top + (next.getBoundingClientRect().top + window.scrollY - top - H) / 2, function () {
+            var mid = off(b);
+            jump(next.getBoundingClientRect().top + window.scrollY + 10, function () {
+              checks['lijn: nog niet zichtbaar bovenaan'] = start[0] === 1 && start[1] === 0;
+              checks['lijn: tekent zich door de hero, zichtbaar als de vorm vervaagt'] = half > 0 && half < 1 && fade === 1 && rest < half;
+              checks['lijn: tekent verder tijdens Expertises en is af als Werk komt'] = mid > 0 && mid < rest && off(b) === 0;
+              checks['lijn: vervaagt als Werk eroverheen schuift'] = op(b) === 0;
+              var wt = werk.getBoundingClientRect().top + window.scrollY, kt = kennis.getBoundingClientRect().top + window.scrollY;
+              jump(wt - H, function () {
+                var before = [off(w[0]), off(w[1])];
+                jump(wt - H * 0.1, function () {
+                  var part = [off(w[0]), off(w[1])];
+                  jump(wt + H * 0.5, function () {
+                    checks['lijn: Werk tekent met de scroll, de schuine later'] = before[0] === 1 && before[1] === 1 && part[0] > 0 && part[0] < 1 && part[1] > part[0] && off(w[0]) === 0 && off(w[1]) === 0;
+                    jump(kt - H, function () {
+                      var kb = off(k[0]);
+                      jump(kt + H * 0.5, function () {
+                        checks['lijn: Kennis tekent met de scroll'] = kb === 1 && off(k[0]) === 0;
+                        done();
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   }
 
   function footerChecks(done) {

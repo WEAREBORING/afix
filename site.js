@@ -1,4 +1,4 @@
-/* Afix site.js v0.64: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.65: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -865,6 +865,121 @@
         drawn = L;
         gsap.set(lines[0], { strokeDashoffset: 1 - easeInOut(L) });
         gsap.set(lines[1], { strokeDashoffset: 1 - easeInOut(clamp(L * 1.2 - 0.2, 0, 1)) });
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+      function refresh() { size(); drawn = -1; update(); }
+      window.addEventListener('resize', refresh);
+      window.addEventListener('load', refresh);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
+      refresh();
+    });
+  });
+
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  // Een verborgen svg met n gele lijnen die zichzelf kunnen tekenen (stroke-dashoffset 1 tot 0)
+  function lineLayer(n, css) {
+    var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), paths = [];
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.cssText = css;
+    while (paths.length < n) {
+      var path = document.createElementNS(ns, 'path');
+      path.setAttribute('pathLength', '1');
+      path.setAttribute('vector-effect', 'non-scaling-stroke');
+      path.style.cssText = 'fill: none; stroke: var(--_theme---surface--accent); stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 1;';
+      paths.push(svg.appendChild(path));
+    }
+    return { svg: svg, paths: paths };
+  }
+
+  /* Gele lijn door de hero en Expertises (data-a-hero en data-a-pin), letterlijk het prototype (bgLine en size()): terwijl
+     de achtergrondvorm vervaagt tekent de lijn zich door de hero, en daarna langzaam verder terwijl Expertises vaststaat. Als
+     Werk eroverheen schuift, vervaagt hij. De lijn moet over de grens van twee secties met eigen vlak, dus staat hetzelfde
+     pad in twee svg's achter de inhoud: een in de hero, die meescrollt, en een sticky in Expertises, die daarna vaststaat
+     (als de bgfx-laag van het prototype). In het prototype is de hero een schermhoogte; hier telt de werkelijke afstand
+     tot Expertises, want op telefoon is de hero hoger. Op een telefoon wordt alleen opnieuw gemeten als de breedte
+     verandert, zoals bij data-a-pin (de adresbalk verandert de hoogte). site.js maakt de svg's zelf; er is geen
+     Webflow-element voor nodig. Reduced motion: direct getekend. */
+  each('[data-a-hero]', function (hero) {
+    var exp = document.querySelector('[data-a-pin]'), next = exp && exp.nextElementSibling;
+    if (!next) return;
+    var touch = window.matchMedia('(hover: none)');
+    withGsap(function (gsap) {
+      var inHero = lineLayer(1, 'position: absolute; left: 0; width: 100%; pointer-events: none; z-index: -1;');
+      var inExp = lineLayer(1, 'display: block; position: sticky; top: 0; width: 100%; pointer-events: none; z-index: -1;');
+      var paths = [inHero.paths[0], inExp.paths[0]], H = 1, stack = 1, share = 0.5, width = 0, ticking = false, shown = '';
+      hero.appendChild(inHero.svg);
+      exp.appendChild(inExp.svg);
+      function size() {
+        var W = document.documentElement.clientWidth, top = hero.getBoundingClientRect().top + window.scrollY;
+        H = window.innerHeight;
+        width = window.innerWidth;
+        stack = exp.getBoundingClientRect().top + window.scrollY;
+        function P(x, y) { return x * W + ' ' + (y <= 1 ? y * stack : stack + (y - 1) * H); }
+        var line = 'M ' + P(0.52, (top - 30) / stack) + ' C ' + P(0.62, top / stack + 0.07) + ' ' + P(0.92, 0.26) + ' ' + P(0.88, 0.5) + ' C ' + P(0.85, 0.7) + ' ' + P(0.6, 0.74) + ' ' + P(0.66, 1) + ' C ' + P(0.71, 1.22) + ' ' + P(0.86, 1.62) + ' ' + P(0.92, 2.04);
+        paths.forEach(function (p) { p.setAttribute('d', line); });
+        inHero.svg.style.top = -top + 'px';
+        inHero.svg.style.height = stack + 'px';
+        inHero.svg.setAttribute('viewBox', '0 0 ' + W + ' ' + stack);
+        inExp.svg.style.height = H + 'px';
+        inExp.svg.style.marginBottom = -H + 'px';
+        inExp.svg.setAttribute('viewBox', '0 ' + stack + ' ' + W + ' ' + H);
+        // Welk deel van de lijn in de hero ligt: dat deel verschijnt terwijl de vorm vervaagt, de rest tijdens Expertises
+        var length = paths[0].getTotalLength(), lo = 0, hi = length;
+        for (var k = 0; k < 24; k++) { var mid = (lo + hi) / 2; if (paths[0].getPointAtLength(mid).y < stack) lo = mid; else hi = mid; }
+        share = lo / length;
+      }
+      function update() {
+        ticking = false;
+        var still = reduce.matches, s = Math.max(0, window.scrollY), top = next.getBoundingClientRect().top;
+        var drawn = still ? 1 : s < stack ? share * easeInOut(clamp((s - stack * 0.04) / (stack * 0.6), 0, 1)) : share + (1 - share) * clamp((s - stack) / Math.max(1, top + s - stack - H), 0, 1);
+        var opacity = still ? 1 : clamp(clamp(s / (stack * 0.55), 0, 1) * 1.6, 0, 1) * (1 - easeInOut(clamp((H - top) / H, 0, 1)));
+        var state = drawn.toFixed(4) + opacity.toFixed(3);
+        if (state === shown) return;
+        shown = state;
+        gsap.set(paths, { strokeDashoffset: 1 - drawn, opacity: opacity });
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+      function refresh() { size(); shown = ''; update(); }
+      window.addEventListener('resize', function () { if (!touch.matches || window.innerWidth !== width) refresh(); });
+      window.addEventListener('load', refresh);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
+      refresh();
+    });
+  });
+
+  /* Gele lijnen in Werk en Kennis (section_werk en section_kennis, staan alleen in Figma: 935:7806 en 935:8784). Werk: een
+     horizontale lijn op halve kaarthoogte (werk_list, zichtbaar tussen de kaarten) en een schuine lijn van 76% boven naar
+     99,7% onder. Kennis: een boog van linksboven achter de eerste kaart door naar 34% onderin. Ze tekenen zich met de scroll en
+     dezelfde timing als Reviews (start als de bovenkant van de sectie op 55% van de schermhoogte staat, klaar op -35%), keuze
+     van de gebruiker. Boog en schuine lijn schalen mee met de sectie. Reduced motion: direct getekend. */
+  each('.section_werk, .section_kennis', function (section) {
+    var list = section.querySelector('.werk_list');
+    withGsap(function (gsap) {
+      var layer = lineLayer(list ? 2 : 1, 'position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;'), lines = layer.paths, ticking = false, drawn = -1;
+      section.insertBefore(layer.svg, section.firstChild);
+      // De inhoud boven de lijnen
+      layer.svg.nextElementSibling.style.position = 'relative';
+      function size() {
+        var w = section.offsetWidth, h = section.offsetHeight;
+        layer.svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        if (list) {
+          var box = list.getBoundingClientRect(), y = box.top - section.getBoundingClientRect().top + box.height / 2;
+          var x0 = w * 0.7646, x1 = w * 0.9972, over = (x1 - x0) / h * 10;
+          lines[0].setAttribute('d', 'M -20 ' + y + ' L ' + (w + 20) + ' ' + y);
+          lines[1].setAttribute('d', 'M ' + (x0 - over) + ' -10 L ' + (x1 + over) + ' ' + (h + 10));
+          return;
+        }
+        // De boog uit Figma, in px op 1440 x 1095
+        function P(x, y) { return x * w / 1440 + ' ' + y * h / 1095; }
+        lines[0].setAttribute('d', 'M ' + P(-243.25, -202.22) + ' C ' + P(-108.45, -166.01) + ' ' + P(16.37, -74.92) + ' ' + P(116.47, 60.27) + ' C ' + P(163.73, 124.54) + ' ' + P(204.54, 198.02) + ' ' + P(237.73, 278.57) + ' C ' + P(263.33, 341.01) + ' ' + P(278.72, 396.35) + ' ' + P(298.78, 462.59) + ' L ' + P(572.86, 1367.89));
+      }
+      function update() {
+        ticking = false;
+        var H = window.innerHeight, L = reduce.matches ? 1 : clamp((H * 0.55 - section.getBoundingClientRect().top) / (H * 0.9), 0, 1);
+        if (L === drawn) return;
+        drawn = L;
+        gsap.set(lines[0], { strokeDashoffset: 1 - easeInOut(L) });
+        if (list) gsap.set(lines[1], { strokeDashoffset: 1 - easeInOut(clamp(L * 1.2 - 0.2, 0, 1)) });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
       function refresh() { size(); drawn = -1; update(); }
