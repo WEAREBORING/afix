@@ -170,6 +170,7 @@
 <section id="dt">
   <span data-a-date id="dt-date">January 29, 2026</span>
   <input type="hidden" data-a-date id="dt-date-input" value="November 26, 2026">
+  <div><form id="dt-form" onsubmit="return false"><button type="submit" data-wait="Versturen..." id="dt-submit"><span>Aanmelden</span><div class="button_icon" id="dt-icon" style="width: 1rem; height: 1rem"><svg id="dt-arrow"></svg></div></button></form><div class="w-form-fail" id="dt-fail" style="display: none"></div></div>
   <a data-a-share="linkedin" id="dt-li" href="#">LinkedIn</a><a data-a-share="whatsapp" id="dt-wa" href="#">WhatsApp</a>
   <div><aside data-a-toc id="dt-none"><div id="dt-none-block"><div data-a-toc-list><a href="#">Kop 2</a></div></div></aside><div data-a-toc-content><p>Geen koppen</p></div></div>
   <div style="display: flex">
@@ -843,11 +844,17 @@
     checks['detail: zonder koppen geen inhoudsopgave'] = document.getElementById('dt-none-block').style.display === 'none';
     var share = decodeURIComponent(document.getElementById('dt-wa').href);
     checks['detail: delen met titel en adres van de pagina'] = document.getElementById('dt-li').href.indexOf('linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(location.origin + location.pathname)) > 0 && share.indexOf('wa.me/?text=' + document.querySelector('h1').textContent.trim() + ' ') > 0;
+    var submit = document.getElementById('dt-submit'), icon = document.getElementById('dt-icon'), fail = document.getElementById('dt-fail');
+    document.getElementById('dt-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    checks['detail: knop toont wachttekst en loader bij verzenden'] = submit.textContent === 'Versturen...' && submit.getAttribute('aria-busy') === 'true' && !document.getElementById('dt-arrow');
     window.scrollTo(0, heads[1].getBoundingClientRect().top + window.scrollY - innerHeight * 0.2);
     setTimeout(function () {
+      checks['detail: loader draait met GSAP, stil bij reduced motion'] = (getComputedStyle(icon).transform !== 'none') !== matchMedia('(prefers-reduced-motion: reduce)').matches;
+      fail.style.display = 'block';
       checks['detail: de kop waar je bent is donker, de rest vaag'] = links[1].getAttribute('aria-current') === 'true' && getComputedStyle(links[1]).opacity === '1' && getComputedStyle(links[0]).opacity === '0.2';
       window.scrollTo(0, window.scrollY + content.getBoundingClientRect().bottom - innerHeight * 0.55);
       setTimeout(function () {
+      checks['detail: mislukt verzenden zet de knop terug'] = submit.textContent === 'Aanmelden' && !submit.hasAttribute('aria-busy') && !!document.getElementById('dt-arrow') && getComputedStyle(icon).transform === 'none';
       checks['detail: aan het eind van de tekst is de laatste kop actief'] = links[2].getAttribute('aria-current') === 'true';
       links[2].click();
       setTimeout(function () {
