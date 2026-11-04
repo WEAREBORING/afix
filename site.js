@@ -1,4 +1,4 @@
-/* Afix site.js v0.44: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.45: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -478,6 +478,8 @@
       }
       var progress = { n: 0 };
       function draw() {
+        // De tekstkleur opnieuw lezen: die loopt mee met de paginakleur van data-a-value
+        ink = (getComputedStyle(el).color.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
         words.forEach(function (w, i) {
           // In stapjes van 2%, zodat er alleen iets gezet wordt als het woord echt verandert
           var t = Math.round(clamp((progress.n - i) / soft, 0, 1) * 50) / 50;
@@ -501,17 +503,26 @@
     });
   });
 
-  /* data-a-value (Item - Kernwaarde): per rij een keer afspelen zodra de rij op 85% van de schermhoogte komt, om en om
-     vanaf rechts en links (Nuchter rechts, Direct links, Eigenwijs rechts). De lijn (kernwaarde_rule) groeit vanaf de kant
-     van het woord, het woord (kernwaarde_title) schuift van buiten het scherm naar het midden en de subtekst
-     (kernwaarde_text) schuift woord voor woord omhoog uit een masker. De slotlijn na de lijst hoort bij de laatste rij, de
-     eyebrow ervoor bij de eerste. Reduced motion en zonder site.js: alles staat er gewoon. */
+  /* data-a-value (Item - Kernwaarde) en de paginakleur: alles hangt aan de scroll, zoals het prototype. q = (schermhoogte
+     min het midden van de rij) / (0,45 x schermhoogte). Het woord (kernwaarde_title) schuift om en om van rechts en links
+     (Nuchter rechts, Direct links, Eigenwijs rechts) van net buiten het scherm naar het midden, de lijn (kernwaarde_rule)
+     groeit vanaf dezelfde kant, 1,4 keer zo snel; de slotlijn na de lijst hoort bij de laatste rij. Boven q 0,92 schuift de
+     subtekst (kernwaarde_text) woord voor woord omhoog uit een masker, onder q 0,7 weer terug.
+     Paginakleur: Cultuur en Kernwaarden delen een kleur die van licht naar donker loopt als de bovenkant van Kernwaarden
+     van 80% naar 30% van de schermhoogte gaat, en terug naar licht terwijl de teamfoto de laatste 40% naar boven schuift
+     (de foto vult dan het scherm, daarna volgt de lichte Reviews). site.js mengt daarvoor de thema-variabelen op die twee
+     secties, zodat tekst, lijnen en knop meekleuren; Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced motion
+     en zonder site.js: alles uit de class. */
   var values = [].slice.call(document.querySelectorAll('[data-a-value]'));
   if (values.length && !reduce.matches) withGsap(function (gsap) {
-    var list = values[0].parentElement, eyebrow = list.previousElementSibling, closing = list.nextElementSibling;
-    var from = { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' };
-    if (eyebrow) gsap.set(eyebrow, from);
-    values.forEach(function (item, i) {
+    function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+    function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+    function rgbOf(el, prop) { return (getComputedStyle(el)[prop].match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); }
+    function mix(a, b, t) { return a.map(function (v, k) { return Math.round(v + (b[k] - v) * t); }).join(', '); }
+    var section = values[0].closest('section'), team = section.querySelector('[data-a-team]');
+    var cultuur = section.previousElementSibling, werk = cultuur.previousElementSibling, closing = values[0].parentElement.nextElementSibling;
+    var light = rgbOf(cultuur, 'backgroundColor'), dark = rgbOf(section, 'backgroundColor'), ink = rgbOf(cultuur, 'color'), paper = rgbOf(section, 'color');
+    var rows = values.map(function (item, i) {
       var dir = i % 2 ? -1 : 1, rules = [item.querySelector('.kernwaarde_rule')];
       var title = item.querySelector('.kernwaarde_title'), text = item.querySelector('.kernwaarde_text');
       if (i === values.length - 1 && closing && closing.matches('.kernwaarde_rule')) rules.push(closing);
@@ -528,51 +539,78 @@
         text.appendChild(mask);
         inner.push(word);
       });
-      gsap.set(rules, { scaleX: 0, transformOrigin: dir > 0 ? 'right center' : 'left center' });
-      gsap.set(title, { x: dir * (document.documentElement.clientWidth / 2 + title.offsetWidth / 2 + 24) });
+      gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
       gsap.set(inner, { yPercent: 110 });
-      onceInView(item, 15, function () {
-        if (!i && eyebrow) gsap.to(eyebrow, { opacity: 1, y: 0, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
-        gsap.to(rules, { scaleX: 1, duration: 0.9, ease: 'power3.out', clearProps: 'transform,transformOrigin' });
-        gsap.to(title, { x: 0, duration: 1.1, ease: 'power3.out', clearProps: 'transform' });
-        gsap.to(inner, { yPercent: 0, delay: 0.3, duration: 0.7, stagger: 0.035, ease: 'power3.out', onComplete: function () { text.textContent = sentence; } });
-      });
+      return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false };
     });
+    function show(r, on) {
+      r.shown = on;
+      gsap.to(r.inner, { yPercent: on ? 0 : 110, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
+    }
+    var lastMix = -1, ticking = false;
+    function paint(m) {
+      var bg = 'rgb(' + mix(light, dark, m) + ')', fg = mix(ink, paper, m);
+      gsap.set([cultuur, section], {
+        '--_theme---surface--page': bg,
+        '--_theme---surface--dark': bg,
+        '--_theme---text--primary': 'rgb(' + fg + ')',
+        '--_theme---text--inverse': 'rgb(' + fg + ')',
+        '--_theme---border--strong': 'rgba(' + fg + ', ' + (0.5 - 0.3 * m) + ')',
+        '--_theme---border--inverse-subtle': 'rgba(' + fg + ', ' + (0.16 + 0.04 * m) + ')'
+      });
+      if (werk) gsap.set(werk, { backgroundColor: bg });
+    }
+    function update() {
+      ticking = false;
+      var H = window.innerHeight, W = document.documentElement.clientWidth;
+      var f1 = clamp((H * 0.8 - section.getBoundingClientRect().top) / (H * 0.5), 0, 1);
+      var f2 = team ? clamp((H * 0.4 - team.getBoundingClientRect().top) / (H * 0.4), 0, 1) : 0;
+      var m = +(easeInOut(f1) * (1 - f2)).toFixed(3);
+      if (m !== lastMix) { lastMix = m; paint(m); }
+      rows.forEach(function (r) {
+        var box = r.el.getBoundingClientRect(), q = clamp((H - box.top - box.height / 2) / (H * 0.45), 0, 1);
+        gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)) });
+        gsap.set(r.rules, { scaleX: easeOut(clamp(q * 1.4, 0, 1)) });
+        if (!r.shown && q > 0.92) show(r, true);
+        else if (r.shown && q < 0.7) show(r, false);
+      });
+    }
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    window.addEventListener('resize', update);
+    update();
   });
 
-  /* data-a-team (kernwaarden_team): de teamfoto groeit met de scroll van zijn plek onder de lijst naar schermvullend. De
-     groei loopt terwijl de bovenkant van de foto van 90% van de schermhoogte naar de bovenrand gaat, zodat de bovenhoeken
-     in de hoeken van het scherm landen; daarna blijft hij 0,6 schermhoogte staan en schuift hij weg. kernwaarden_team wordt
-     daarvoor het podium (schermbreed, sticky ruimte) en de foto zelf groeit daarin. Geen ruimte onder de foto: Reviews sluit
-     erop aan. Reduced motion en zonder site.js: de foto uit de class. */
+  /* data-a-team (kernwaarden_team): de teamfoto groeit met de scroll, zoals het prototype. kernwaarden_team wordt een
+     schermvullend vlak en de foto staat daarin absoluut; hij begint 40% van de schermbreedte (maximaal 620px, minstens 340px
+     of de schermbreedte min 32px) met verhouding 0,62 en groeit naar het hele vlak terwijl de bovenkant van dat vlak van de
+     onderrand naar de bovenrand van het scherm gaat, dus de bovenhoeken landen in de hoeken van het scherm. Geen ruimte
+     onder de foto: Reviews sluit erop aan. Reduced motion en zonder site.js: de foto uit de class. */
   each('[data-a-team]', function (team) {
     var img = team.querySelector('img');
     if (!img || reduce.matches) return;
     withGsap(function (gsap) {
       var pad = team.closest('.padding-section'), touch = window.matchMedia('(hover: none)');
-      var hold = 0.6, w0, h0, r0, W, H, ticking = false;
+      var W, H, sw, sh, ticking = false;
       // Schermvullend met object-fit cover: op een smal scherm bepaalt de hoogte hoe groot de foto (16:9) wordt
       img.sizes = '(max-aspect-ratio: 16/9) 178vh, 100vw';
       function update() {
         ticking = false;
-        var p = clamp((0.9 * H - team.getBoundingClientRect().top) / (0.9 * H), 0, 1), e = p * p * (3 - 2 * p);
-        gsap.set(img, { width: w0 + (W - w0) * e, height: h0 + (H - h0) * e, borderRadius: r0 * (1 - e) });
+        var g = clamp((H - team.getBoundingClientRect().top) / H, 0, 1);
+        gsap.set(img, {
+          left: (W - sw) / 2 * (1 - g),
+          top: Math.min(H * 0.06, 56) * (1 - g),
+          width: sw + (W - sw) * g,
+          height: sh + (H - sh) * g,
+          borderRadius: 20 * (1 - g)
+        });
       }
       function measure() {
-        ['width', 'height', 'maxWidth', 'overflow', 'aspectRatio'].forEach(function (k) { team.style[k] = ''; });
-        gsap.set(img, { clearProps: 'all' });
-        if (pad) pad.style.paddingBottom = '';
         W = document.documentElement.clientWidth;
         H = window.innerHeight;
-        w0 = team.offsetWidth;
-        h0 = team.offsetHeight;
-        r0 = parseFloat(getComputedStyle(team).borderTopLeftRadius) || 0;
-        team.style.overflow = 'visible';
-        team.style.maxWidth = 'none';
-        team.style.aspectRatio = 'auto';
-        team.style.width = W + 'px';
-        team.style.height = H * (1 + hold) + 'px';
-        gsap.set(img, { position: 'sticky', top: 0, display: 'block', marginLeft: 'auto', marginRight: 'auto', maxWidth: 'none' });
+        sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
+        sh = sw * 0.62;
+        gsap.set(team, { position: 'relative', width: W, height: H, maxWidth: 'none', aspectRatio: 'auto', borderRadius: 0 });
+        gsap.set(img, { position: 'absolute', maxWidth: 'none' });
         if (pad) pad.style.paddingBottom = '0';
         update();
       }

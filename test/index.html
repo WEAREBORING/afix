@@ -21,6 +21,8 @@
   .kennis-card_arrow { opacity: 0; }
   .tabpanel { display: none; }
   .tabpanel:first-child { display: block; }
+  #kw-voor { background: var(--_theme---surface--page, rgb(245, 240, 232)); color: var(--_theme---text--primary, rgb(29, 29, 27)); }
+  #kernwaarden { background: var(--_theme---surface--dark, rgb(39, 51, 39)); color: var(--_theme---text--inverse, rgb(255, 255, 255)); }
   #kw-team img { width: 100%; height: 100%; object-fit: cover; background: #888; }
   #kw-team { width: 10rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 1rem; }
   .row { display: flex; gap: 1rem; overflow: auto hidden; scroll-snap-type: x mandatory; width: 30rem; }
@@ -109,8 +111,9 @@
 </div>
 <div style="height: 60rem"></div>
 
+<section id="kw-voor" style="height: 20rem"></section>
 <section id="kernwaarden" style="overflow: clip"><div class="padding-section"><div style="display: flex; flex-direction: column; align-items: center">
-  <div id="kw-eyebrow">DNA</div>
+  <div>DNA</div>
   <div style="width: 100%">
     <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Nuchter</h3><p class="kernwaarde_text" style="text-align: center">Geen blabla. Gewoon keuzes die blijven werken.</p></div>
     <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Direct</h3><p class="kernwaarde_text" style="text-align: center">Minder schakels.</p></div>
@@ -400,49 +403,62 @@
   }
 
   function valueChecks(done) {
-    // Rijen spelen om en om af: eerst woord buiten het scherm en lijn op 0, daarna alles terug naar de class
+    // Hangt aan de scroll: eerst woord buiten beeld, lijn op 0; rij in beeld: alles op zijn plek; terug: weer weg. Paginakleur loopt mee
     var items = document.querySelectorAll('[data-a-value]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     var title = items[0].querySelector('.kernwaarde_title'), second = items[1].querySelector('.kernwaarde_title');
     var rule = items[0].querySelector('.kernwaarde_rule'), text = items[0].querySelector('.kernwaarde_text'), slot = $('#kw-slot');
-    var sentence = 'Geen blabla. Gewoon keuzes die blijven werken.';
+    var sec = $('#kernwaarden'), before = $('#kw-voor'), sentence = 'Geen blabla. Gewoon keuzes die blijven werken.';
     if (still) {
       checks['kernwaarden: reduced motion gewoon de tekst'] = !title.style.transform && text.textContent === sentence && !text.children.length;
       return done();
     }
-    window.scrollTo(0, 0);
+    var H = innerHeight, W = document.documentElement.clientWidth;
+    function x(el) { return gsap.getProperty(el, 'x'); }
+    function bg(el) { return getComputedStyle(el).backgroundColor; }
+    function to(el, y) { window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top - y); }
+    to(sec, H);
     setTimeout(function () {
-      var W = document.documentElement.clientWidth;
-      checks['kernwaarden: om en om buiten beeld, lijn op 0'] = gsap.getProperty(title, 'x') > W / 2 && gsap.getProperty(second, 'x') < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0 && getComputedStyle($('#kw-eyebrow')).opacity === '0';
+      checks['kernwaarden: om en om buiten beeld, lijn op 0'] = x(title) > W / 2 && x(second) < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0;
       checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
-      window.scrollTo(0, window.scrollY + items[1].getBoundingClientRect().top - innerHeight * 0.5);
+      checks['paginakleur: begint licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(29, 29, 27)';
+      to(sec, H * 0.55);
       setTimeout(function () {
-        checks['kernwaarden: alles terug naar de class'] = !title.style.transform && !second.style.transform && !rule.style.transform && !slot.style.transform && !text.children.length && text.textContent === sentence && !$('#kw-eyebrow').getAttribute('style');
-        done();
-      }, 1700);
+        var between = bg(sec), parts = between.match(/\d+/g).map(Number);
+        checks['paginakleur: halverwege een mengkleur'] = parts[0] > 39 && parts[0] < 245 && between === bg(before);
+        // Kop net onder de bovenrand: rij helemaal binnen, pagina donker
+        to(items[0], H * 0.3);
+        setTimeout(function () {
+          checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1;
+          checks['paginakleur: donker'] = bg(sec) === 'rgb(39, 51, 39)' && getComputedStyle(title).color === 'rgb(255, 255, 255)';
+          to(items[0], H);
+          setTimeout(function () {
+            checks['kernwaarden: terugscrollen draait het om'] = x(title) > W / 2 && gsap.getProperty(text.querySelector('span span'), 'yPercent') > 100;
+            done();
+          }, 1400);
+        }, 1300);
+      }, 300);
     }, 300);
   }
 
   function teamChecks(done) {
-    // Teamfoto: groeit met de scroll tot schermvullend; bij reduced motion blijft hij de foto uit de class
+    // Teamfoto: groeit met de scroll tot schermvullend, de hoeken landen in de hoeken; de pagina is dan weer licht
     var team = $('#kw-team'), img = team.querySelector('img'), H = innerHeight, W = document.documentElement.clientWidth;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       checks['team: reduced motion de foto uit de class'] = team.style.height === '' && img.getBoundingClientRect().width === team.offsetWidth;
       return done();
     }
     function to(top) { window.scrollTo(0, window.scrollY + team.getBoundingClientRect().top - top); }
-    to(H * 0.95);
+    var sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
+    to(H);
     setTimeout(function () {
-      var small = img.getBoundingClientRect().width, r = parseFloat(getComputedStyle(img).borderTopLeftRadius);
+      var a = img.getBoundingClientRect(), r = parseFloat(getComputedStyle(img).borderTopLeftRadius);
+      checks['team: begint als in het prototype'] = Math.abs(a.width - sw) < 1 && Math.abs(a.height - sw * 0.62) < 1 && Math.abs(a.left - (W - sw) / 2) < 1 && r === 20;
       to(0);
       setTimeout(function () {
         var b = img.getBoundingClientRect();
-        checks['team: begint klein met afgeronde hoeken'] = Math.abs(small - 160) < 40 && r > 0;
         checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && parseFloat(getComputedStyle(img).borderTopLeftRadius) === 0;
-        to(-H * 0.5);
-        setTimeout(function () {
-          checks['team: blijft staan tijdens het vasthouden'] = Math.abs(img.getBoundingClientRect().top) < 1;
-          done();
-        }, 300);
+        checks['paginakleur: weer licht achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(245, 240, 232)';
+        done();
       }, 300);
     }, 300);
   }
