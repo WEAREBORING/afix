@@ -1,4 +1,4 @@
-/* Afix site.js v0.75: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.76: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1537,6 +1537,13 @@
       var fixedStyle = { position: 'fixed', left: '0', right: '0', bottom: 'max(1rem, env(safe-area-inset-bottom))', zIndex: '50', width: 'fit-content', margin: '0 auto', maxWidth: 'calc(100% - 2 * var(--_layout---space--page-x))' };
       holder.setAttribute('aria-hidden', 'true');
       function time(t) { return reduce.matches ? 0 : t; }
+      // Hover op de andere links: de vervaagde tekst wordt helemaal donker. Daarna neemt de class het weer over.
+      var mouse = window.matchMedia('(hover: hover)');
+      [].forEach.call(nav.querySelectorAll('a:not(.w--current)'), function (link) {
+        var rest = getComputedStyle(link).opacity;
+        link.addEventListener('mouseenter', function () { if (mouse.matches) gsap.to(link, { opacity: 1, duration: time(0.25), ease: 'power2.out', overwrite: true }); });
+        link.addEventListener('mouseleave', function () { gsap.to(link, { opacity: rest, duration: time(0.25), ease: 'power2.out', overwrite: true, clearProps: 'opacity' }); });
+      });
       function setFixed(on) {
         fixed = on;
         if (on) {

@@ -40,6 +40,8 @@
   .kennis-rij_list { display: grid; grid-auto-flow: column; grid-auto-columns: 12rem; column-gap: 1rem; overflow-x: auto; width: 20rem; max-width: 100%; }
   .kennis-filter_panel { display: none; }
   #kn-nav { display: flex; overflow: auto; width: 10rem; max-width: 100%; }
+  #kn-nav a { opacity: 0.3; }
+  #kn-nav a.w--current { opacity: 1; }
   .pinrow { display: flex; gap: 1rem; overflow: auto hidden; width: 30rem; }
   .pinrow > div { flex: none; width: 20rem; height: 6rem; }
   .expertise-card_link { display: block; padding: 1rem; background: rgb(255, 255, 255); --_theme---surface--accent: #f9ca00; }
@@ -799,7 +801,17 @@
         checks['pagina-hero: lijn is klaar en heeft geen streepjes meer'] = !path.getAttribute('pathLength') && !path.style.strokeDasharray;
         var first = grid.firstElementChild, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
         checks['kaarten: staan na het binnenkomen schoon'] = reduced || (!first.style.opacity && !first.style.transform && !first.style.filter) || getComputedStyle(first).opacity === '0';
-        done();
+        // Hover op de niet-actieve link van de navigatie (alleen met muis)
+        var link = nav.querySelector('a:not(.w--current)'), hovers = matchMedia('(hover: hover)').matches;
+        link.dispatchEvent(new MouseEvent('mouseenter'));
+        setTimeout(function () {
+          checks['subnav: hover maakt de tekst donker'] = !hovers || getComputedStyle(link).opacity === '1';
+          link.dispatchEvent(new MouseEvent('mouseleave'));
+          setTimeout(function () {
+            checks['subnav: na de hover terug naar de class'] = getComputedStyle(link).opacity === '0.3' && !link.style.opacity;
+            done();
+          }, 400);
+        }, 400);
       }, 1000);
     }, 1000);
   }
