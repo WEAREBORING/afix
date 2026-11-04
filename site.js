@@ -1,4 +1,4 @@
-/* Afix site.js v0.58: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.59: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -619,8 +619,10 @@
   /* data-a-team (kernwaarden_team): de teamfoto groeit met de scroll, zoals het prototype. kernwaarden_team wordt een
      schermvullend vlak en de foto staat daarin absoluut; hij begint 40% van de schermbreedte (maximaal 620px, minstens 340px
      of de schermbreedte min 32px) met verhouding 0,62 en groeit naar het hele vlak terwijl de bovenkant van dat vlak van de
-     onderrand naar de bovenrand van het scherm gaat, dus de bovenhoeken landen in de hoeken van het scherm. Geen ruimte
-     onder de foto: Reviews sluit erop aan. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
+     onderrand naar de bovenrand van het scherm gaat, dus de bovenhoeken landen in de hoeken van het scherm. Daarna staat de
+     foto vast en schuift de volgende sectie (Reviews) er met ronde bovenhoeken (radius/l) en een zachte schaduw overheen,
+     zoals Werk over Expertises (keuze van de gebruiker, niet in het prototype). site.js zet daarvoor kernwaarden_team
+     sticky, maakt de wrapper een schermhoogte hoger en geeft Reviews een negatieve marge. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
      beweegt daarin langzamer dan de scroll, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
      de maat van het vlak, dus er is geen extra element nodig. Reduced motion en zonder site.js: de foto uit de class. */
   each('[data-a-team]', function (team) {
@@ -628,12 +630,14 @@
     if (!img || reduce.matches) return;
     withGsap(function (gsap) {
       var pad = team.closest('.padding-section'), touch = window.matchMedia('(hover: none)');
+      var comp = team.parentElement, next = team.closest('section').nextElementSibling;
       var W, H, sw, sh, ticking = false;
       // Schermvullend met object-fit cover: op een smal scherm bepaalt de hoogte hoe groot de foto (16:9) wordt
       img.sizes = '(max-aspect-ratio: 16/9) 178vh, 100vw';
       function update() {
         ticking = false;
-        var top = team.getBoundingClientRect().top, g = clamp((H - top) / H, 0, 1);
+        // Waar het vlak zou staan zonder vastzetten: de wrapper eindigt twee schermhoogtes onder die plek
+        var top = comp.getBoundingClientRect().bottom - 2 * H, g = clamp((H - top) / H, 0, 1);
         var h = sh + (H - sh) * g, extra = h * 0.15, o = extra * (1 - clamp((H - top) / (2 * H), 0, 1));
         gsap.set(img, {
           left: (W - sw) / 2 * (1 - g),
@@ -648,9 +652,20 @@
         H = window.innerHeight;
         sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
         sh = sw * 0.62;
-        gsap.set(team, { position: 'relative', width: W, height: H, maxWidth: 'none', aspectRatio: 'auto', borderRadius: 0 });
+        gsap.set(team, { position: 'sticky', top: 0, width: W, height: H, maxWidth: 'none', aspectRatio: 'auto', borderRadius: 0 });
         gsap.set(img, { position: 'absolute', maxWidth: 'none' });
         if (pad) pad.style.paddingBottom = '0';
+        comp.style.height = '';
+        comp.style.height = comp.offsetHeight + H + 'px';
+        if (next) {
+          next.style.position = 'relative';
+          next.style.zIndex = '2';
+          next.style.marginTop = -H + 'px';
+          next.style.borderTopLeftRadius = next.style.borderTopRightRadius = 'var(--_layout---radius--l)';
+          // Schaduw alleen boven de sectie, zoals bij Werk
+          next.style.boxShadow = '0 -1.5rem 4rem -2.5rem rgba(0, 0, 0, 0.28)';
+          next.style.clipPath = 'inset(-6rem 0 0 0)';
+        }
         update();
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });

@@ -127,7 +127,7 @@
   <div data-a-team="photo" id="kw-team"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
 </div></div></section>
 
-<div style="height: 20rem"></div>
+<div style="height: 160rem"></div>
 <section class="section_reviews" style="position: relative; overflow: clip">
   <div><div class="reviews_header">Kop van Reviews</div><div class="reviews_stack" style="height: 6rem; margin-top: 2rem"></div></div>
 </section>
@@ -527,7 +527,15 @@
           checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && b.radius === 0;
           checks['team: parallax, de foto schuift binnen het vlak'] = c.cut / c.height > b.cut / b.height;
           checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
-          done();
+          // Daarna blijft de foto staan en schuift de volgende sectie eroverheen
+          var next = $('#kernwaarden').nextElementSibling;
+          window.scrollBy(0, H * 0.5);
+          setTimeout(function () {
+            var d = frame();
+            checks['team: foto staat vast, volgende sectie schuift eroverheen'] = Math.abs(d.top) < 1 && Math.abs(next.getBoundingClientRect().top - H * 0.5) < 2 && parseFloat(next.style.marginTop) === -H && next.style.zIndex === '2' && !!next.style.borderTopLeftRadius;
+            checks['team: parallax loopt door terwijl de foto vaststaat'] = d.cut < b.cut;
+            done();
+          }, 500);
         }, 1100);
       }, 300);
     }, 300);
