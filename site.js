@@ -1,4 +1,4 @@
-/* Afix site.js v0.67: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.68: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -955,7 +955,7 @@
 
   /* Gele lijnen in Werk en Kennis (section_werk en section_kennis, staan alleen in Figma: 935:7806 en 935:8784). Werk: een
      horizontale lijn op halve kaarthoogte (werk_list, zichtbaar tussen de kaarten) en een schuine lijn van 76% boven naar
-     99,7% onder. Kennis: een boog van linksboven achter de eerste kaart door naar 34% onderin. Ze tekenen zich met de scroll en
+     99,7% onder. Kennis: een boog vanuit de linkerrand van het scherm (keuze van de gebruiker, in Figma uit de bovenrand) achter de eerste kaart door naar 31% onderin. Ze tekenen zich met de scroll en
      dezelfde timing als Reviews (start als de bovenkant van de sectie op 55% van de schermhoogte staat, klaar op -35%), keuze
      van de gebruiker. Boog en schuine lijn schalen mee met de sectie. Reduced motion: direct getekend. */
   each('.section_werk, .section_kennis', function (section) {
@@ -975,9 +975,10 @@
           lines[1].setAttribute('d', 'M ' + (x0 - over) + ' -10 L ' + (x1 + over) + ' ' + (h + 10));
           return;
         }
-        // De boog uit Figma, in px op 1440 x 1095
-        function P(x, y) { return x * w / 1440 + ' ' + y * h / 1095; }
-        lines[0].setAttribute('d', 'M ' + P(-243.25, -202.22) + ' C ' + P(-108.45, -166.01) + ' ' + P(16.37, -74.92) + ' ' + P(116.47, 60.27) + ' C ' + P(163.73, 124.54) + ' ' + P(204.54, 198.02) + ' ' + P(237.73, 278.57) + ' C ' + P(263.33, 341.01) + ' ' + P(278.72, 396.35) + ' ' + P(298.78, 462.59) + ' L ' + P(572.86, 1367.89));
+        // De boog uit Figma, in px op 1440 x 1095, 140 px lager en vanaf net buiten beeld: zo komt hij uit de linkerrand van
+        // het scherm en niet uit de bovenrand van de sectie
+        function P(x, y) { return x * w / 1440 + ' ' + (y + 140) * h / 1095; }
+        lines[0].setAttribute('d', 'M ' + P(-14.57, -80.07) + ' C ' + P(32.43, -40.91) + ' ' + P(76.43, 6.19) + ' ' + P(116.47, 60.27) + ' C ' + P(163.73, 124.54) + ' ' + P(204.54, 198.02) + ' ' + P(237.73, 278.57) + ' C ' + P(263.33, 341.01) + ' ' + P(278.72, 396.35) + ' ' + P(298.78, 462.59) + ' L ' + P(572.86, 1367.89));
       }
       function update() {
         ticking = false;
