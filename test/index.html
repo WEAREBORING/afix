@@ -62,6 +62,7 @@
 <a class="card" href="#" data-a-hover>Hover mij <span data-a-hover-x="0.5rem">&rarr;</span></a>
 
 <header data-a-nav>
+  <div class="nav_topbar">Topbalk</div>
   <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Strategie <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
   <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Websites <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
   <button type="button" aria-expanded="false" data-a-nav-toggle>Menu</button>
@@ -127,6 +128,10 @@
 </div></div></section>
 
 <div style="height: 20rem"></div>
+<section class="section_reviews" style="position: relative; overflow: clip">
+  <div><div class="reviews_header">Kop van Reviews</div><div class="reviews_stack" style="height: 6rem; margin-top: 2rem"></div></div>
+</section>
+<div style="height: 120rem"></div>
 <div class="footer_cta-list">
   <div class="footer_cta-card"><div class="footer_cta-content"><h2>Voel jij het ook?</h2><p>Schroom niet en maak een afspraak, je komt er hoe dan ook wijzer uit.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
   <div class="footer_cta-card-dark"><div class="footer_cta-content"><h2>Eerst zien wat we kunnen?</h2><p>Zie hoe we met onze partners bouwen aan groei.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
@@ -297,7 +302,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { footerChecks(report); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { footerChecks(report); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -525,6 +530,50 @@
           done();
         }, 1100);
       }, 300);
+    }, 300);
+  }
+
+  function tuckChecks(done) {
+    // Topbalk schuift weg bij omlaag scrollen, komt terug bij omhoog
+    var nav = $('[data-a-nav]'), bar = $('.nav_topbar');
+    window.scrollTo(0, 600);
+    setTimeout(function () {
+      window.scrollTo(0, 900);
+      setTimeout(function () {
+        checks['nav: topbalk schuift weg bij omlaag scrollen'] = Math.abs(gsap.getProperty(nav, 'y') + bar.offsetHeight) < 1;
+        window.scrollTo(0, 700);
+        setTimeout(function () {
+          checks['nav: topbalk komt terug bij omhoog scrollen'] = !nav.style.transform;
+          done();
+        }, 700);
+      }, 700);
+    }, 300);
+  }
+
+  function reviewsChecks(done) {
+    // Binnenkomen met blur-fade, lijnen tekenen met de scroll
+    var sec = $('.section_reviews'), head = $('.reviews_header'), paths = sec.querySelectorAll('svg path'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function off(i) { return parseFloat(getComputedStyle(paths[i]).strokeDashoffset); }
+    checks['reviews: twee lijnen in een verborgen svg, achter de inhoud'] = paths.length === 2 && sec.firstElementChild.tagName.toLowerCase() === 'svg' && sec.firstElementChild.getAttribute('aria-hidden') === 'true' && sec.children[1].style.position === 'relative';
+    if (still) {
+      checks['reviews: reduced motion direct getekend en zichtbaar'] = off(0) === 0 && off(1) === 0 && !head.getAttribute('style');
+      return done();
+    }
+    var H = innerHeight, start = getComputedStyle(head).opacity, filter = head.style.filter;
+    window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - H);
+    setTimeout(function () {
+      checks['reviews: kop start verborgen met blur'] = start === '0' && /blur/.test(filter);
+      checks['reviews: lijnen nog niet getekend'] = off(0) > 0.95 && off(1) > 0.95;
+      window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top - H * 0.45);
+      setTimeout(function () {
+        var half = [off(0), off(1)];
+        window.scrollTo(0, window.scrollY + sec.getBoundingClientRect().top + H * 0.2);
+        setTimeout(function () {
+          checks['reviews: lijnen tekenen met de scroll, de diagonale later'] = half[0] > 0 && half[0] < 1 && half[1] > half[0] && off(0) === 0 && off(1) === 0;
+          checks['reviews: kop staat daarna schoon'] = !head.getAttribute('style') && getComputedStyle(head).opacity === '1';
+          done();
+        }, 1300);
+      }, 700);
     }, 300);
   }
 

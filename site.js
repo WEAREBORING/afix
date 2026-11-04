@@ -1,4 +1,4 @@
-/* Afix site.js v0.56: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.58: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -97,6 +97,24 @@
       dd.addEventListener('focusout', function (e) { if (e.relatedTarget && !dd.contains(e.relatedTarget)) setDrop(dd, false); });
     });
     if (navToggle && menu) navToggle.addEventListener('click', function () { setMenu(navToggle.getAttribute('aria-expanded') !== 'true'); });
+    // Sticky (position in de class): de topbalk schuift weg bij omlaag scrollen en komt terug bij omhoog, zoals het prototype
+    var bar = nav.querySelector('.nav_topbar');
+    document.documentElement.style.scrollPaddingTop = nav.offsetHeight - (bar ? bar.offsetHeight : 0) + 'px';
+    if (bar) withGsap(function (g) {
+      var last = window.scrollY, tucked = false;
+      function tuck(on) {
+        if (on === tucked) return;
+        tucked = on;
+        g.to(nav, { y: on ? -bar.offsetHeight : 0, duration: reduce.matches ? 0 : 0.45, ease: 'power4.out', overwrite: true, onComplete: on ? null : function () { g.set(nav, { clearProps: 'transform' }); } });
+      }
+      window.addEventListener('scroll', function () {
+        var y = window.scrollY;
+        if (y < 40) tuck(false);
+        else if (y > last + 3 && !(navToggle && navToggle.getAttribute('aria-expanded') === 'true')) tuck(true);
+        else if (y < last - 3) tuck(false);
+        last = y;
+      }, { passive: true });
+    });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       var open = drops.filter(isOpen)[0];
@@ -688,6 +706,62 @@
       list.addEventListener('pointerleave', function () { set(null); });
       list.addEventListener('focusout', function (e) { if (!list.contains(e.relatedTarget)) set(null); });
       desktop.addEventListener('change', function () { set(null); });
+    });
+  });
+
+  /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis komen een keer
+     binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
+     fade en omhoog). Reduced motion en zonder site.js: gewoon zichtbaar. */
+  var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels';
+  if (!reduce.matches && document.querySelector(arrivals)) withGsap(function (gsap) {
+    each(arrivals, function (el) {
+      gsap.set(el, { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' });
+      onceInView(el, 10, function () {
+        gsap.to(el, { opacity: 1, y: 0, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
+      });
+    });
+  });
+
+  /* Gele lijnen in Reviews (section_reviews, zoals het prototype): een horizontale lijn door de kaarten (reviews_stack) en
+     een diagonale rechts, die zichzelf tekenen met de scroll terwijl de sectie binnenkomt. site.js maakt de svg zelf, want
+     de lijnen worden toch uit de maat van de sectie berekend. Reduced motion: direct getekend. */
+  each('.section_reviews', function (section) {
+    var stack = section.querySelector('.reviews_stack');
+    if (!stack) return;
+    withGsap(function (gsap) {
+      function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), ticking = false;
+      svg.setAttribute('aria-hidden', 'true');
+      svg.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;';
+      var lines = [0, 1].map(function () {
+        var path = document.createElementNS(ns, 'path');
+        path.setAttribute('pathLength', '1');
+        path.setAttribute('vector-effect', 'non-scaling-stroke');
+        path.style.cssText = 'fill: none; stroke: var(--_theme---surface--accent); stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 1;';
+        return svg.appendChild(path);
+      });
+      section.insertBefore(svg, section.firstChild);
+      // De inhoud boven de lijnen
+      svg.nextElementSibling.style.position = 'relative';
+      function size() {
+        var w = section.offsetWidth, h = section.offsetHeight, x0 = w * 0.765, x1 = w + 20;
+        var y = stack.getBoundingClientRect().top - section.getBoundingClientRect().top + stack.offsetHeight * 0.4;
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        lines[0].setAttribute('d', 'M -20 ' + y + ' L ' + (w + 20) + ' ' + y);
+        lines[1].setAttribute('d', 'M ' + x0 + ' -10 L ' + x1 + ' ' + (x1 - x0) / (w * 0.235) * h * 0.89);
+      }
+      function update() {
+        ticking = false;
+        var H = window.innerHeight, L = reduce.matches ? 1 : clamp((H - section.getBoundingClientRect().top) / (H * 1.1), 0, 1);
+        gsap.set(lines[0], { strokeDashoffset: 1 - easeInOut(L) });
+        gsap.set(lines[1], { strokeDashoffset: 1 - easeInOut(clamp(L * 1.2 - 0.2, 0, 1)) });
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+      function refresh() { size(); update(); }
+      window.addEventListener('resize', refresh);
+      window.addEventListener('load', refresh);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
+      refresh();
     });
   });
 
