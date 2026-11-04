@@ -1,4 +1,4 @@
-/* Afix site.js v0.72: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.73: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -819,7 +819,7 @@
   /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis komen een keer
      binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
      fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
-  var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels';
+  var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header';
   if (!reduce.matches && document.querySelector(arrivals)) withGsap(function (gsap) {
     each(arrivals, function (el) {
       gsap.set(el, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
@@ -1487,7 +1487,8 @@
         // Reduced motion: wel tonen, maar direct en zonder zoom of verschuiving
         var t = reduce.matches ? 0 : 1;
         if (!rest) rest = { card: getComputedStyle(card).backgroundColor, labels: labels.map(function (l) { return getComputedStyle(l).backgroundColor; }) };
-        gsap.to(card, { backgroundColor: colorOf(card, '--_theme---surface--accent'), duration: 0.3 * t, ease: 'power2.out', overwrite: true });
+        // 'auto': alleen de kleur overschrijven, anders stopt een hover het binnenkomen van de kaart halverwege
+        gsap.to(card, { backgroundColor: colorOf(card, '--_theme---surface--accent'), duration: 0.3 * t, ease: 'power2.out', overwrite: 'auto' });
         if (labels.length) gsap.to(labels, { backgroundColor: colorOf(card, '--_theme---border--subtle'), duration: 0.3 * t, ease: 'power2.out', overwrite: true });
         if (img && t) gsap.to(img, { scale: 1.03, transformOrigin: '50% 100%', duration: 0.8, ease: 'expo.out', overwrite: true });
         if (date) gsap.to(date, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
@@ -1498,7 +1499,7 @@
         on = false;
         var t = reduce.matches ? 0 : 1;
         function clear(el, props) { return function () { gsap.set(el, { clearProps: props }); }; }
-        gsap.to(card, { backgroundColor: rest.card, duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(card, 'backgroundColor') });
+        gsap.to(card, { backgroundColor: rest.card, duration: 0.3 * t, ease: 'power2.out', overwrite: 'auto', onComplete: clear(card, 'backgroundColor') });
         labels.forEach(function (l, i) { gsap.to(l, { backgroundColor: rest.labels[i], duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(l, 'backgroundColor') }); });
         if (img) gsap.to(img, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: clear(img, 'transform,transformOrigin') });
         if (arrow) gsap.to(arrow, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: clear(arrow, 'opacity,transform') });
@@ -1543,11 +1544,11 @@
           if (!holder.parentNode) nav.parentNode.insertBefore(holder, nav);
           nav.style.cssText = 'position: fixed; left: 0; right: 0; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 50; width: fit-content; margin: 0 auto; max-width: calc(100% - 2 * var(--_layout---space--page-x));';
           var last = nav.getBoundingClientRect();
-          gsap.fromTo(nav, { x: first.left - last.left, y: first.top - last.top }, { x: 0, y: 0, duration: time(0.6), ease: 'power3.out', overwrite: true });
+          gsap.fromTo(nav, { x: first.left - last.left, y: first.top - last.top }, { x: 0, y: 0, duration: time(0.6), ease: 'power3.out', overwrite: 'auto' });
         } else {
           var home = holder.getBoundingClientRect(), rest = nav.getBoundingClientRect();
           gsap.to(nav, {
-            x: home.left - rest.left + gsap.getProperty(nav, 'x'), y: home.top - rest.top + gsap.getProperty(nav, 'y'), duration: time(0.5), ease: 'power3.out', overwrite: true,
+            x: home.left - rest.left + gsap.getProperty(nav, 'x'), y: home.top - rest.top + gsap.getProperty(nav, 'y'), duration: time(0.5), ease: 'power3.out', overwrite: 'auto',
             onComplete: function () { nav.removeAttribute('style'); if (holder.parentNode) holder.parentNode.removeChild(holder); }
           });
         }
@@ -1557,7 +1558,7 @@
         if (want !== floating) { away = false; setFloating(want); }
         if (floating && atFooter !== away) {
           away = atFooter;
-          gsap.to(nav, { y: away ? nav.offsetHeight * 2 : 0, duration: time(0.45), ease: 'power3.out', overwrite: true });
+          gsap.to(nav, { y: away ? nav.offsetHeight * 2 : 0, duration: time(0.45), ease: 'power3.out', overwrite: 'auto' });
         }
       }
       window.addEventListener('scroll', update, { passive: true });
@@ -1639,7 +1640,7 @@
       });
       empty.style.display = total ? 'none' : '';
       if (more) more.style.display = left ? 'flex' : '';
-      if (gsap && fresh.length && !reduce.matches) gsap.fromTo(fresh, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'opacity,transform' });
+      if (gsap && fresh.length && !reduce.matches) gsap.fromTo(fresh, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
     }
     function setOpen(open) {
       toggle.setAttribute('aria-expanded', open);
@@ -1678,6 +1679,73 @@
     });
     if (more) more.addEventListener('click', function () { count += step; apply(); });
     apply();
+  });
+
+  /* Kaarten in een data-a-filter-list komen een keer binnen zodra ze in beeld komen, met de blur-fade van de Home; naast
+     elkaar kort na elkaar. Kaarten die het filter nog verbergt doen niet mee: die komen binnen via het filter. */
+  if (!reduce.matches && document.querySelector('[data-a-filter-list]')) withGsap(function (gsap) {
+    each('[data-a-filter-list]', function (list) {
+      [].forEach.call(list.children, function (card) {
+        if (card.style.display === 'none') return;
+        var before = 0, el = card;
+        while ((el = el.previousElementSibling)) if (el.offsetTop === card.offsetTop) before++;
+        gsap.set(card, withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)'));
+        onceInView(card, 10, function () {
+          gsap.to(card, withBlur({ opacity: 1, y: 0, delay: Math.min(before, 3) * 0.08, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
+        });
+      });
+    });
+  });
+
+  /* data-a-page-hero (Section - Hero Kennis): bij het laden komen de eyebrow, de delen van de kop en de navigatie binnen met
+     de blur-fade en timing van data-a-hero, en de gele randen van de vormen tekenen zich. Alleen het stuk van de rand dat in
+     beeld is telt: de rest loopt ver buiten de hero. De navigatie vervaagt alleen, want data-a-subnav beweegt hem. */
+  each('[data-a-page-hero]', function (hero) {
+    if (reduce.matches) return;
+    var nav = hero.querySelector('[data-a-subnav]'), spans = [].slice.call(hero.querySelectorAll('h1 span'));
+    var intro = [hero.querySelector('.tag')].concat(spans, [nav]).filter(Boolean);
+    var box = hero.querySelector('.hero-kennis_background svg');
+    var lines = box ? [].map.call(box.querySelectorAll('path'), function (path) {
+      var total = path.getTotalLength(), m = path.getCTM(), size = box.getBoundingClientRect(), first = 1, last = 0;
+      for (var i = 0; i <= 240; i++) {
+        var p = path.getPointAtLength(total * i / 240), x = m.a * p.x + m.c * p.y + m.e, y = m.b * p.x + m.d * p.y + m.f;
+        if (x >= 0 && x <= size.width && y >= 0 && y <= size.height) { first = Math.min(first, i / 240); last = Math.max(last, i / 240); }
+      }
+      path.setAttribute('pathLength', '1');
+      path.style.strokeDasharray = '1';
+      path.style.strokeDashoffset = 1 - first;
+      return { path: path, to: 1 - last };
+    }) : [];
+    function show() {
+      intro.forEach(function (el) { el.style.opacity = ''; });
+      lines.forEach(function (l) { l.path.style.strokeDasharray = ''; l.path.style.strokeDashoffset = ''; l.path.removeAttribute('pathLength'); });
+    }
+    intro.forEach(function (el) { el.style.opacity = '0'; });
+    var fallback = setTimeout(show, 3000);
+    withGsap(function (gsap) {
+      clearTimeout(fallback);
+      intro.forEach(function (el) {
+        if (spans.indexOf(el) > -1) gsap.set(el, withBlur({ position: 'relative', top: '1.5rem' }, 'blur(0.75rem)'));
+        else if (el !== nav) gsap.set(el, withBlur({ y: '1.5rem' }, 'blur(0.75rem)'));
+      });
+      var started = false;
+      function start() {
+        if (started) return;
+        started = true;
+        intro.forEach(function (el, i) {
+          var vars = { opacity: 1, duration: 1.1, ease: 'power3.out', delay: 0.1 + i * 0.09 };
+          if (spans.indexOf(el) > -1) gsap.to(el, withBlur(Object.assign(vars, { top: 0, clearProps: 'opacity,filter,position,top' }), 'blur(0rem)'));
+          else if (el === nav) gsap.to(el, Object.assign(vars, { clearProps: 'opacity' }));
+          else gsap.to(el, withBlur(Object.assign(vars, { y: 0, clearProps: 'opacity,transform,filter' }), 'blur(0rem)'));
+        });
+        lines.forEach(function (l) {
+          gsap.to(l.path, { strokeDashoffset: l.to, duration: 1.6, delay: 0.2, ease: 'power2.inOut', onComplete: function () { l.path.style.strokeDasharray = ''; l.path.style.strokeDashoffset = ''; l.path.removeAttribute('pathLength'); } });
+        });
+      }
+      // Wachten op de fonts (hooguit 0,8 s), anders verspringen de regels halverwege
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
+      setTimeout(start, 800);
+    });
   });
 
   /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het
