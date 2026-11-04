@@ -1,4 +1,4 @@
-/* Afix site.js v0.71: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.72: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1509,6 +1509,175 @@
       card.addEventListener('focusin', function (e) { if (e.target.matches(':focus-visible')) show(); });
       card.addEventListener('focusout', hide);
     });
+  });
+
+  /* Datums (kennis-card_date en kennis-session_date): Webflow schrijft Engelse maanden ("14 Feb 26", "12 December 2026").
+     site.js maakt er "14 feb ’26" en "12 december 2026" van. Op de class en niet op een attribuut: hij staat in elke lijst. */
+  var monthsEn = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
+  var monthsShort = 'jan feb mrt apr mei jun jul aug sep okt nov dec'.split(' ');
+  var monthsLong = 'januari februari maart april mei juni juli augustus september oktober november december'.split(' ');
+  each('.kennis-card_date, .kennis-session_date', function (el) {
+    var m = /^(\d{1,2}) ([A-Za-z]+) (\d{2}|\d{4})$/.exec(el.textContent.trim());
+    var i = m ? monthsEn.indexOf(m[2].slice(0, 3).toLowerCase()) : -1;
+    if (i < 0) return;
+    el.textContent = +m[1] + ' ' + (m[2].length > 3 ? monthsLong[i] : monthsShort[i]) + ' ' + (m[3].length === 2 ? '’' + m[3] : m[3]);
+  });
+
+  /* data-a-subnav (Section - Hero Kennis): de secundaire navigatie (Figma 935:7556). Zodra je scrolt schuift hij van de hero
+     naar onderaan het scherm, bovenaan de pagina weer terug; bij de footer schuift hij omlaag uit beeld. Een lege houder
+     bewaart zijn plek in de hero. Past de balk niet (telefoon), dan scrolt hij zijwaarts met de huidige link in het midden. */
+  each('[data-a-subnav]', function (nav) {
+    var current = nav.querySelector('.w--current');
+    if (current) nav.scrollLeft = current.offsetLeft - (nav.clientWidth - current.offsetWidth) / 2;
+    withGsap(function (gsap) {
+      var holder = document.createElement('div'), footer = document.querySelector('footer');
+      var floating = false, atFooter = false, away = false;
+      holder.setAttribute('aria-hidden', 'true');
+      function time(t) { return reduce.matches ? 0 : t; }
+      function setFloating(on) {
+        floating = on;
+        var first = nav.getBoundingClientRect();
+        if (on) {
+          holder.style.width = nav.offsetWidth + 'px';
+          holder.style.height = nav.offsetHeight + 'px';
+          if (!holder.parentNode) nav.parentNode.insertBefore(holder, nav);
+          nav.style.cssText = 'position: fixed; left: 0; right: 0; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 50; width: fit-content; margin: 0 auto; max-width: calc(100% - 2 * var(--_layout---space--page-x));';
+          var last = nav.getBoundingClientRect();
+          gsap.fromTo(nav, { x: first.left - last.left, y: first.top - last.top }, { x: 0, y: 0, duration: time(0.6), ease: 'power3.out', overwrite: true });
+        } else {
+          var home = holder.getBoundingClientRect(), rest = nav.getBoundingClientRect();
+          gsap.to(nav, {
+            x: home.left - rest.left + gsap.getProperty(nav, 'x'), y: home.top - rest.top + gsap.getProperty(nav, 'y'), duration: time(0.5), ease: 'power3.out', overwrite: true,
+            onComplete: function () { nav.removeAttribute('style'); if (holder.parentNode) holder.parentNode.removeChild(holder); }
+          });
+        }
+      }
+      function update() {
+        var want = window.scrollY > 8;
+        if (want !== floating) { away = false; setFloating(want); }
+        if (floating && atFooter !== away) {
+          away = atFooter;
+          gsap.to(nav, { y: away ? nav.offsetHeight * 2 : 0, duration: time(0.45), ease: 'power3.out', overwrite: true });
+        }
+      }
+      window.addEventListener('scroll', update, { passive: true });
+      if (footer) new IntersectionObserver(function (entries) { atFooter = entries[0].isIntersecting; update(); }).observe(footer);
+      update();
+    });
+  });
+
+  /* data-a-row (rijen op de kennispagina): een zijwaarts scrollende rij zonder kopieën, zodat filteren werkt. Met muis via
+     de pijlknoppen (Element - Pijlknoppen in dezelfde data-a-row), op touch vegen. Aan het begin en eind vervaagt de pijl. */
+  each('[data-a-row]', function (row) {
+    var list = row.querySelector('.kennis-rij_list');
+    if (!list) return;
+    var prev = row.querySelector('[data-a-carousel-prev]'), next = row.querySelector('[data-a-carousel-next]'), gsap = null;
+    withGsap(function (g) { gsap = g; });
+    function end() { return list.scrollWidth - list.clientWidth; }
+    function setButton(btn, on) {
+      if (!btn || btn.disabled === !on) return;
+      btn.disabled = !on;
+      if (gsap) gsap.to(btn, { opacity: on ? 1 : 0.3, duration: reduce.matches ? 0 : 0.2, ease: 'power2.out', overwrite: true });
+      else btn.style.opacity = on ? 1 : 0.3;
+    }
+    function state() { setButton(prev, list.scrollLeft > 1); setButton(next, list.scrollLeft < end() - 1); }
+    function go(dir) {
+      var card = [].filter.call(list.children, function (c) { return c.offsetWidth; })[0];
+      if (!card) return;
+      var step = card.offsetWidth + parseFloat(getComputedStyle(list).columnGap), to = clamp((Math.round(list.scrollLeft / step) + dir) * step, 0, end());
+      if (gsap && !reduce.matches) gsap.to(list, { scrollLeft: to, duration: 0.7, ease: 'power3.out', overwrite: true });
+      else list.scrollLeft = to;
+    }
+    if (prev) prev.addEventListener('click', function () { go(-1); });
+    if (next) next.addEventListener('click', function () { go(1); });
+    list.addEventListener('scroll', state, { passive: true });
+    window.addEventListener('resize', state);
+    state();
+  });
+
+  /* data-a-filter (Element - Kennisfilter): zoeken en expertise kiezen, op de kaarten in elke data-a-filter-list naast het filter.
+     Waarde van data-a-filter-list: het aantal kaarten zonder filter. data-a-filter-more (knop): zoveel kaarten erbij per klik,
+     en dan telt het filter ook met pagina's. data-a-filter-group verdwijnt als er in zijn lijst niets overblijft. De keuzes
+     komen uit de labels op de kaarten (het laatste label in kennis-card_tags), dus er staat nooit een lege expertise tussen. */
+  each('[data-a-filter]', function (root) {
+    var sets = [].map.call(root.parentNode.querySelectorAll('[data-a-filter-list]'), function (list) {
+      return { list: list, group: list.closest('[data-a-filter-group]'), limit: num(list, 'data-a-filter-list', 12), items: [].slice.call(list.children) };
+    });
+    if (!sets.length) return;
+    var input = root.querySelector('[data-a-filter-search]'), clear = root.querySelector('[data-a-filter-clear]');
+    var toggle = root.querySelector('[data-a-filter-toggle]'), label = root.querySelector('[data-a-filter-label]'), panel = root.querySelector('[data-a-filter-panel]');
+    var more = root.parentNode.querySelector('[data-a-filter-more]'), step = more ? num(more, 'data-a-filter-more', 12) : 0;
+    var count = step, query = '', expertise = '', all = label.textContent, gsap = null;
+    withGsap(function (g) { gsap = g; });
+    var empty = document.createElement('div');
+    empty.className = 'kennis_empty';
+    empty.textContent = 'Geen resultaten. Probeer een ander trefwoord of kies een andere expertise.';
+    empty.setAttribute('role', 'status');
+    empty.style.display = 'none';
+    root.parentNode.insertBefore(empty, root.nextSibling);
+    function tagOf(item) {
+      var tags = item.querySelectorAll('.kennis-card_tags .tag');
+      return tags.length ? tags[tags.length - 1].textContent.trim() : '';
+    }
+    function apply() {
+      var active = query || expertise, total = 0, left = false, fresh = [];
+      sets.forEach(function (set) {
+        var hits = set.items.filter(function (item) {
+          return (!query || item.textContent.toLowerCase().indexOf(query) > -1) && (!expertise || tagOf(item) === expertise);
+        });
+        var cap = more ? count : active ? hits.length : set.limit;
+        set.items.forEach(function (item) {
+          var i = hits.indexOf(item), on = i > -1 && i < cap;
+          if (on && item.style.display === 'none') fresh.push(item);
+          item.style.display = on ? '' : 'none';
+        });
+        if (hits.length > cap) left = true;
+        total += hits.length;
+        if (set.group) set.group.style.display = hits.length ? '' : 'none';
+        set.list.scrollLeft = 0;
+        set.list.dispatchEvent(new Event('scroll'));
+      });
+      empty.style.display = total ? 'none' : '';
+      if (more) more.style.display = left ? 'flex' : '';
+      if (gsap && fresh.length && !reduce.matches) gsap.fromTo(fresh, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'opacity,transform' });
+    }
+    function setOpen(open) {
+      toggle.setAttribute('aria-expanded', open);
+      panel.style.display = open ? 'flex' : '';
+      var caret = toggle.querySelector('svg'), t = reduce.matches ? 0 : 1;
+      if (!gsap) return;
+      if (caret) gsap.to(caret, { rotation: open ? 180 : 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
+      if (open) gsap.fromTo(panel, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 * t, ease: 'power2.out', clearProps: 'opacity,transform' });
+    }
+    var names = [];
+    sets.forEach(function (set) { set.items.forEach(function (item) { var t = tagOf(item); if (t && names.indexOf(t) < 0) names.push(t); }); });
+    names.sort(function (a, b) { return a.localeCompare(b, 'nl'); });
+    [all].concat(names).forEach(function (name, i) {
+      var option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'kennis-filter_option';
+      option.textContent = name;
+      option.addEventListener('click', function () {
+        expertise = i ? name : '';
+        label.textContent = name;
+        count = step;
+        setOpen(false);
+        toggle.focus();
+        apply();
+      });
+      panel.appendChild(option);
+    });
+    input.addEventListener('input', function () { query = input.value.trim().toLowerCase(); count = step; apply(); });
+    clear.addEventListener('click', function () { input.value = ''; query = ''; count = step; input.focus(); apply(); });
+    toggle.addEventListener('click', function () { setOpen(toggle.getAttribute('aria-expanded') !== 'true'); });
+    document.addEventListener('click', function (e) { if (!toggle.parentNode.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true') return;
+      setOpen(false);
+      toggle.focus();
+    });
+    if (more) more.addEventListener('click', function () { count += step; apply(); });
+    apply();
   });
 
   /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het

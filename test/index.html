@@ -37,6 +37,9 @@
   .case { --_theme---surface--accent: #f9ca00; display: inline-block; }
   .case-card_logo-view { background: rgb(255, 255, 255); padding: 1rem; }
   .case-card_tags, .case-card_text { opacity: 0; }
+  .kennis-rij_list { display: grid; grid-auto-flow: column; grid-auto-columns: 12rem; column-gap: 1rem; overflow-x: auto; width: 20rem; max-width: 100%; }
+  .kennis-filter_panel { display: none; }
+  #kn-nav { display: flex; overflow: auto; width: 10rem; max-width: 100%; }
   .pinrow { display: flex; gap: 1rem; overflow: auto hidden; width: 30rem; }
   .pinrow > div { flex: none; width: 20rem; height: 6rem; }
   .expertise-card_link { display: block; padding: 1rem; background: rgb(255, 255, 255); --_theme---surface--accent: #f9ca00; }
@@ -140,6 +143,21 @@
   <div class="footer_cta-card"><div class="footer_cta-content"><h2>Voel jij het ook?</h2><p>Schroom niet en maak een afspraak, je komt er hoe dan ook wijzer uit.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
   <div class="footer_cta-card-dark"><div class="footer_cta-content"><h2>Eerst zien wat we kunnen?</h2><p>Zie hoe we met onze partners bouwen aan groei.</p></div><img class="footer_cta-image" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
 </div>
+<div style="height: 10rem"></div>
+
+<section id="kn-sec">
+  <nav data-a-subnav="kennis" id="kn-nav"><a href="#a" class="w--current" style="flex: none; width: 6rem">Hier</a><a href="#b" style="flex: none; width: 6rem">Daar</a></nav>
+  <div id="kn-a">
+    <div data-a-filter="kennis" id="kn-f"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button><div class="kennis-filter_panel" data-a-filter-panel></div></div></div>
+    <div data-a-row="a" data-a-filter-group id="kn-row"><button type="button" data-a-carousel-prev>v</button><button type="button" data-a-carousel-next>n</button>
+      <div class="kennis-rij_list" data-a-filter-list="2" id="kn-list"><div>Alfa<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Beta<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Websites</span></div></div><div>Gamma<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Delta<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Websites</span></div></div><div>Epsilon<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div></div></div>
+  </div>
+  <div id="kn-b">
+    <div data-a-filter="kennis" id="kn-g"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button><div class="kennis-filter_panel" data-a-filter-panel></div></div></div>
+    <div data-a-filter-list="2" id="kn-grid"><div>Een<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Twee<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Drie<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Vier<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Vijf<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div></div>
+    <button type="button" data-a-filter-more="2" id="kn-more" style="display: none">Meer laden</button>
+  </div>
+</section>
 <div style="height: 10rem"></div>
 
 <p id="result">Bezig...</p>
@@ -307,7 +325,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(report); }); }); }); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(report); }); }); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -718,6 +736,62 @@
         }, 900);
       }, 900);
     }, 1400);
+  }
+
+  // Kennispagina: datum, filter, rijen, Meer laden en de secundaire navigatie
+  function kennisChecks(done) {
+    var f = document.getElementById('kn-f'), g = document.getElementById('kn-g'), input = f.querySelector('input'), list = document.getElementById('kn-list'), row = document.getElementById('kn-row');
+    var nav = document.getElementById('kn-nav'), grid = document.getElementById('kn-grid'), more = document.getElementById('kn-more');
+    var prev = row.querySelector('[data-a-carousel-prev]'), next = row.querySelector('[data-a-carousel-next]');
+    function shown(el) { return [].filter.call(el.children, function (c) { return c.style.display !== 'none'; }).length; }
+    function type(v) { input.value = v; input.dispatchEvent(new Event('input')); }
+    var empty = f.nextElementSibling, options = f.querySelectorAll('.kennis-filter_option');
+    checks['datum: Nederlandse maand en jaar met apostrof'] = document.querySelector('.kennis-card_date').textContent === '30 jan ’26';
+    checks['filter: zonder filter het afgesproken aantal kaarten'] = shown(list) === 2;
+    checks['filter: keuzes uit de labels, gesorteerd, met Alle expertises eerst'] = [].map.call(options, function (o) { return o.textContent; }).join() === 'Alle expertises,Strategie,Websites';
+    type('delta');
+    checks['filter: zoeken vindt ook kaarten buiten het aantal'] = shown(list) === 1 && list.children[3].style.display === '';
+    type('zzz');
+    checks['filter: niets gevonden verbergt de rij en toont de melding'] = row.style.display === 'none' && empty.style.display === '' && empty.className === 'kennis_empty';
+    f.querySelector('[data-a-filter-clear]').click();
+    checks['filter: wissen zet de rij en het aantal terug'] = input.value === '' && row.style.display === '' && empty.style.display === 'none' && shown(list) === 2;
+    var toggle = f.querySelector('[data-a-filter-toggle]'), panel = f.querySelector('[data-a-filter-panel]');
+    toggle.click();
+    checks['filter: keuzemenu opent'] = toggle.getAttribute('aria-expanded') === 'true' && getComputedStyle(panel).display === 'flex';
+    options[2].click();
+    checks['filter: expertise kiezen filtert en sluit het menu'] = shown(list) === 2 && list.children[1].style.display === '' && list.children[3].style.display === '' && f.querySelector('[data-a-filter-label]').textContent === 'Websites' && getComputedStyle(panel).display === 'none';
+    toggle.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    checks['filter: Escape sluit het menu'] = toggle.getAttribute('aria-expanded') === 'false';
+    options[0].click();
+    checks['filter: terug naar alle expertises'] = shown(list) === 2 && f.querySelector('[data-a-filter-label]').textContent === 'Alle expertises';
+    checks['meer laden: start met het aantal en toont de knop'] = shown(grid) === 2 && more.style.display === 'flex';
+    more.click();
+    checks['meer laden: een klik toont er meer'] = shown(grid) === 4 && more.style.display === 'flex';
+    more.click();
+    checks['meer laden: knop weg als alles er staat'] = shown(grid) === 5 && more.style.display === '';
+    var gi = g.querySelector('input');
+    gi.value = 'twee';
+    gi.dispatchEvent(new Event('input'));
+    checks['meer laden: filter telt mee'] = shown(grid) === 1 && more.style.display === '';
+    gi.value = '';
+    gi.dispatchEvent(new Event('input'));
+    checks['meer laden: na het filter weer van voren af aan'] = shown(grid) === 2;
+    // Rij: breder maken dan het scherm door alle kaarten te tonen
+    type('a');
+    checks['rij: aan het begin is de vorige-pijl uit'] = prev.disabled && !next.disabled;
+    next.click();
+    setTimeout(function () {
+      checks['rij: pijl schuift een kaart door'] = list.scrollLeft > 150 && !prev.disabled;
+      type('');
+      checks['rij: filteren zet de rij terug naar het begin'] = list.scrollLeft === 0;
+      checks['subnav: gescrold staat hij onderaan vast, met een houder op zijn plek'] = getComputedStyle(nav).position === 'fixed' && !!nav.previousElementSibling && nav.previousElementSibling.offsetHeight > 0;
+      window.scrollTo(0, 0);
+      setTimeout(function () {
+        checks['subnav: bovenaan weer op zijn plek, zonder inline stijl of houder'] = getComputedStyle(nav).position === 'static' && !nav.getAttribute('style') && !nav.previousElementSibling;
+        done();
+      }, 1000);
+    }, 1000);
   }
 
   function report() {
