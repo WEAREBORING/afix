@@ -332,27 +332,27 @@
   }
 
   function fillChecks(done) {
-    // Tekst wordt woord voor woord scherp bij scrollen; schermlezer leest de hele zin
+    // Tekst speelt een keer af zodra de kop in beeld komt; schermlezer leest de hele zin
     var el = $('#fill'), words = el.querySelectorAll('span[aria-hidden]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     checks['fill: tekst in woorden, aria-label met de hele zin'] = still ? !words.length : words.length === 11 && el.getAttribute('aria-label') === 'Niet als bureau op afstand, maar als verlengstuk van je team.';
     if (still) return done();
     var H = innerHeight, r = el.getBoundingClientRect();
-    // Kop net onderin (voortgang 0): alles onzichtbaar; halverwege: een wazige gloed; ver doorgescrold: scherp, zonder inline stijl
+    // Kop net onder het startpunt: alles onzichtbaar; erboven: speelt vanzelf af, ook zonder verder te scrollen; daarna scherp, zonder inline stijl
     window.scrollTo(0, window.scrollY + r.top - 0.78 * H - 20);
     setTimeout(function () {
       var hidden = [].every.call(words, function (w) { return getComputedStyle(w).opacity === '0'; });
-      r = el.getBoundingClientRect();
-      window.scrollTo(0, window.scrollY + r.top - 0.78 * H + (r.height + 0.3 * H) * 0.5);
+      window.scrollTo(0, window.scrollY + 60);
       setTimeout(function () {
         var blurry = [].some.call(words, function (w) { return /em/.test(w.style.textShadow || '') && parseFloat(getComputedStyle(w).opacity) > 0; });
-        r = el.getBoundingClientRect();
-        window.scrollTo(0, window.scrollY + r.top - 0.78 * H + r.height + 0.3 * H + 5);
         setTimeout(function () {
-          checks['fill: onzichtbaar, dan wazig, dan scherp'] = hidden && blurry && [].every.call(words, function (w) { return !w.getAttribute('style'); });
+          checks['fill: onzichtbaar, speelt vanzelf af, dan scherp'] = hidden && blurry && [].every.call(words, function (w) { return !w.getAttribute('style'); });
           window.scrollTo(0, 0);
-          setTimeout(done, 300);
-        }, 300);
-      }, 300);
+          setTimeout(function () {
+            checks['fill: blijft staan bij terugscrollen'] = [].every.call(words, function (w) { return !w.getAttribute('style'); });
+            done();
+          }, 300);
+        }, 1400);
+      }, 500);
     }, 300);
   }
 

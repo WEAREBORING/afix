@@ -1,4 +1,4 @@
-/* Afix site.js v0.37: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.38: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -418,11 +418,11 @@
     });
   });
 
-  /* data-a-fill (Section - Cultuur): de tekst wordt woord voor woord scherp terwijl je scrolt, zoals op butter.video. Een
+  /* data-a-fill (Section - Cultuur): de tekst wordt woord voor woord scherp, zoals op butter.video. De animatie speelt
+     een keer af zodra de bovenkant van de kop op 78% van de schermhoogte komt en hangt verder niet aan het scrollen. Een
      woord begint onzichtbaar, wordt dan een wazige gloed (de tekst zelf doorzichtig, met een vage schaduw in signaalgeel,
      surface/accent) en lost op in scherpe tekst in de kleur uit de class: de tekst wordt dekkend, de gloed kleurt naar de
-     tekstkleur en verdwijnt. Voortgang = (0,78 x schermhoogte min de bovenkant van de kop) / (hoogte van de kop + 0,3 x
-     schermhoogte); elk woord loopt over een paar woorden in, terugscrollen draait het om. Woorden blijven gewone inline
+     tekstkleur en verdwijnt. Elk woord loopt over een paar woorden in. Woorden blijven gewone inline
      spans, dus de tekst breekt op dezelfde plekken af. Schermlezers lezen de gewone tekst (aria-label op de kop, de woorden
      zijn aria-hidden). Reduced motion en zonder site.js: gewoon de tekst. */
   each('[data-a-fill]', function (el) {
@@ -458,23 +458,25 @@
           textShadow: 'rgba(' + mix(glow, ink, t) + ', ' + (0.9 * (1 - t)) + ') 0 0 ' + (0.08 + 0.06 * t) + 'em'
         };
       }
-      var ticking = false;
-      function update() {
-        ticking = false;
-        var r = el.getBoundingClientRect(), H = window.innerHeight;
-        var n = clamp((0.78 * H - r.top) / (r.height + 0.3 * H), 0, 1) * (words.length + soft);
+      var progress = { n: 0 };
+      function draw() {
         words.forEach(function (w, i) {
           // In stapjes van 2%, zodat er alleen iets gezet wordt als het woord echt verandert
-          var t = Math.round(clamp((n - i) / soft, 0, 1) * 50) / 50;
+          var t = Math.round(clamp((progress.n - i) / soft, 0, 1) * 50) / 50;
           if (last[i] === t) return;
           last[i] = t;
           if (t === 1) gsap.set(w, { clearProps: 'opacity,color,textShadow' });
           else gsap.set(w, look(t));
         });
       }
-      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-      window.addEventListener('resize', update);
-      update();
+      draw();
+      var watch = new IntersectionObserver(function (entries) {
+        // Ook starten als de kop al voorbij is, bijvoorbeeld bij herladen lager op de pagina
+        if (!entries[0].isIntersecting && entries[0].boundingClientRect.top >= 0) return;
+        watch.disconnect();
+        gsap.to(progress, { n: words.length + soft, duration: (words.length + soft) * 0.1, ease: 'none', onUpdate: draw });
+      }, { rootMargin: '0px 0px -22% 0px' });
+      watch.observe(el);
     });
   });
 
