@@ -24,6 +24,7 @@
   #kw-voor { background: var(--_theme---surface--page, rgb(245, 240, 232)); color: var(--_theme---text--primary, rgb(29, 29, 27)); }
   #kernwaarden { background: var(--_theme---surface--dark, rgb(39, 51, 39)); color: var(--_theme---text--inverse, rgb(255, 255, 255)); }
   #kw-team img { width: 100%; height: 100%; object-fit: cover; background: #888; }
+  .kernwaarde_text { line-height: 1.2; }
   #kw-team { width: 10rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 1rem; }
   .row { display: flex; gap: 1rem; overflow: auto hidden; scroll-snap-type: x mandatory; width: 30rem; }
   .row > div { flex: none; width: 12rem; height: 4rem; background: #eee; scroll-snap-align: start; }
@@ -315,8 +316,35 @@
       strip.dispatchEvent(new PointerEvent('pointerleave'));
       setTimeout(function () {
         checks['hero: uitdaging terug naar de class'] = [].every.call(cards, function (k) { return !k.style.flexGrow && !k.style.backgroundColor && !k.querySelector('.hero-card_detail').getAttribute('style') && getComputedStyle(k.querySelector('.hero-card_image-left')).opacity === '0' && Math.abs(k.offsetWidth - cards[0].offsetWidth) < 1; });
-        fadeChecks(done);
+        quickChecks();
       }, 900);
+    }
+    function quickChecks() {
+      // Snelle hover: binnen 0,1 s weer eraf, dan mag de tekst niet blijven staan; snel terug op dezelfde kaart mag hem niet kwijtraken
+      var detail = cards[0].querySelector('.hero-card_detail');
+      function on() { cards[0].dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); }
+      function off() { strip.dispatchEvent(new PointerEvent('pointerleave')); }
+      if (!desktop) return fadeChecks(done);
+      on();
+      setTimeout(function () {
+        off();
+        setTimeout(function () {
+          checks['hero: tekst blijft niet staan na een snelle hover'] = !detail.getAttribute('style') && getComputedStyle(detail).display === 'none';
+          checks['hero: foto\'s blijven niet staan na een snelle hover'] = [].every.call(cards[0].querySelectorAll('.hero-card_image-left, .hero-card_image-right'), function (img) { return !img.style.opacity && getComputedStyle(img).opacity === '0'; });
+          on();
+          setTimeout(function () {
+            off();
+            setTimeout(function () {
+              on();
+              setTimeout(function () {
+                checks['hero: snel terug op de kaart houdt de tekst'] = getComputedStyle(detail).display === 'flex' && getComputedStyle(detail).position === 'absolute' && getComputedStyle(detail).opacity === '1';
+                off();
+                setTimeout(function () { fadeChecks(done); }, 900);
+              }, 800);
+            }, 30);
+          }, 300);
+        }, 900);
+      }, 80);
     }
   }
 
@@ -420,6 +448,7 @@
     setTimeout(function () {
       checks['kernwaarden: om en om buiten beeld, lijn op 0'] = x(title) > W / 2 && x(second) < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0;
       checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
+      checks['kernwaarden: subtekst helemaal verborgen in het masker'] = [].every.call(text.children, function (m) { return m.firstElementChild.getBoundingClientRect().top >= m.getBoundingClientRect().bottom; });
       checks['paginakleur: begint licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(29, 29, 27)';
       to(sec, H * 0.55);
       setTimeout(function () {

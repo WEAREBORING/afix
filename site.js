@@ -1,4 +1,4 @@
-/* Afix site.js v0.45: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.47: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -209,8 +209,10 @@
           { x: 0, y: 0, scale: 1, rotation: rot, duration: dir ? 0.8 : 0.9, delay: delay, ease: 'elastic.out(1.1, 0.85)' });
       }
       function photoOut(img, side, rot, dir, t) {
-        if (!img || gsap.getProperty(img, 'opacity') === 0) return;
+        if (!img) return;
         var done = clear(img, 'opacity,transform,zIndex');
+        // Nog onzichtbaar: dan kan zijn start (rechts 0,06 s later) nog klaarstaan, en die mag niet alsnog afspelen
+        if (gsap.getProperty(img, 'opacity') === 0) { gsap.killTweensOf(img); return done(); }
         if (!t) return done();
         if (dir) {
           gsap.to(img, { x: -dir * rem(1.25), rotation: rot - dir * 5, scale: 0.94, xPercent: 0, yPercent: 0, duration: 0.35, ease: 'power3.out', overwrite: true });
@@ -261,9 +263,10 @@
           if (p.detail) {
             if (on) {
               gsap.set(p.detail, { display: 'flex', position: 'absolute', left: rem(1.5), width: widths[k], bottom: rem(1.5) });
-              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: 'auto' });
+              // overwrite true, ook bij weggaan: 'auto' laat een uitgestelde tween staan, en dan blijft de tekst hangen na een snelle hover
+              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: true });
             } else if (p.detail.style.display) {
-              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: 'auto', onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
+              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
             }
           }
         });
@@ -531,7 +534,7 @@
       text.textContent = '';
       sentence.trim().split(/\s+/).forEach(function (w, k) {
         var mask = document.createElement('span'), word = document.createElement('span');
-        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.15em; margin-bottom: -0.15em;';
+        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em;';
         word.style.display = 'inline-block';
         word.textContent = w;
         mask.appendChild(word);
@@ -540,12 +543,12 @@
         inner.push(word);
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
-      gsap.set(inner, { yPercent: 110 });
+      gsap.set(inner, { yPercent: 120 });
       return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false };
     });
     function show(r, on) {
       r.shown = on;
-      gsap.to(r.inner, { yPercent: on ? 0 : 110, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
+      gsap.to(r.inner, { yPercent: on ? 0 : 120, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true });
     }
     var lastMix = -1, ticking = false;
     function paint(m) {
