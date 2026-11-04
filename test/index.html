@@ -67,7 +67,7 @@
 
 <section id="werk">
   <button type="button" data-a-carousel-prev>Vorige</button><button type="button" data-a-carousel-next>Volgende</button>
-  <div data-a-carousel="werk" class="row"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div></div>
+  <div data-a-carousel="werk" class="row"><div>1</div><div>2</div><div>3</div><div>4</div><div style="width: 16rem">5</div></div>
 </section>
 
 <section id="reviews">
@@ -90,6 +90,7 @@
 </div></section>
 
 <section data-a-pin="expertises"><div><div>
+  <h2 id="pin-kop">Kop van de volgende sectie</h2>
   <div class="pinrow">
     <div data-a-expertise="item"><a href="#" class="expertise-card_link">Strategie <span class="expertise-card_arrow">&rarr;</span></a></div>
     <div data-a-expertise="item"><a href="#" class="expertise-card_link">Websites <span class="expertise-card_arrow">&rarr;</span></a></div>
@@ -250,7 +251,7 @@
     var real = [].filter.call(row.children, function (c) { return !c.hasAttribute('aria-hidden'); });
     function atCenter(n) { var c = real[n].getBoundingClientRect(), r = row.getBoundingClientRect(); return Math.abs(c.left + c.width / 2 - r.left - r.width / 2) < 2; }
     checks['rij: kopie ervoor en erna'] = real.length === 5 && row.children.length === 15 && row.children[0].textContent === '1' && row.children[14].textContent === '5';
-    checks['rij start op eerste echte kaart'] = atCenter(0);
+    checks['rij start op de breedste kaart'] = atCenter(4);
     $('#werk [data-a-carousel-next]').click();
     // Bij reduced motion springt de rij, zonder tween
     setTimeout(function () {
@@ -259,17 +260,17 @@
       checks['rij: pijl beweegt als het zelf doorschuiven'] = still || (t.duration() === 1.2 && t.vars.ease === 'power2.inOut');
     }, 100);
     setTimeout(function () {
-      checks['rij volgende kaart'] = atCenter(1);
+      checks['rij volgende kaart (rond)'] = atCenter(0);
       checks['site.js lijnt uit, niet de harde snap'] = row.style.scrollSnapType === 'none' && row.style.touchAction === 'pan-y';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
-        checks['rij vorige kaart'] = atCenter(0);
+        checks['rij vorige kaart (rond)'] = atCenter(4);
         $('#werk [data-a-carousel-prev]').click();
         setTimeout(function () {
-          checks['eindeloos achteruit'] = atCenter(4);
+          checks['rij nog een terug'] = atCenter(3);
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
-            checks['eindeloos vooruit'] = atCenter(0);
+            checks['rij weer vooruit'] = atCenter(4);
             caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(report); }); }); });
           }, 1500);
         }, 1500);
@@ -299,9 +300,27 @@
       strip.dispatchEvent(new PointerEvent('pointerleave'));
       setTimeout(function () {
         checks['hero: uitdaging terug naar de class'] = [].every.call(cards, function (k) { return !k.style.flexGrow && !k.style.backgroundColor && !k.querySelector('.hero-card_detail').getAttribute('style') && getComputedStyle(k.querySelector('.hero-card_image-left')).opacity === '0' && Math.abs(k.offsetWidth - cards[0].offsetWidth) < 1; });
-        done();
+        fadeChecks(done);
       }, 900);
     }
+  }
+
+  function fadeChecks(done) {
+    // Vervagen bij wegscrollen: nog zichtbaar als de kop van de volgende sectie iets onder de helft staat, weg op de helft
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
+    var head = $('#pin-kop'), comp = $('.hero-home_component');
+    function headTo(y, then) {
+      var r = head.getBoundingClientRect();
+      window.scrollTo(0, window.scrollY + r.top + r.height / 2 - y);
+      setTimeout(then, 300);
+    }
+    headTo(innerHeight * 0.6, function () {
+      var mid = parseFloat(getComputedStyle(comp).opacity);
+      headTo(innerHeight * 0.5, function () {
+        checks['hero: vervaagt tot de kop eronder op de helft staat'] = mid > 0 && mid < 1 && parseFloat(getComputedStyle(comp).opacity) < 0.01;
+        done();
+      });
+    });
   }
 
   function pinChecks(done) {

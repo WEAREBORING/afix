@@ -1,4 +1,4 @@
-/* Afix site.js v0.41: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.43: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -98,7 +98,8 @@
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component, traag beginnend, over 70% van de herohoogte, samen met de achtergrondvorm
+     hero-home_component, traag beginnend en zacht uitlopend, en is weg als de kop van de volgende sectie op de helft van
+     het scherm staat, samen met de achtergrondvorm
      (hero-home_background en het vervolg ervan in Expertises, expertises_background). Hover of toetsenbordfocus op
      een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
      tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
@@ -150,12 +151,16 @@
       // (expertises_background), want dat is dezelfde vorm
       var fading = [comp].concat([].slice.call(document.querySelectorAll('.hero-home_background, .expertises_background')));
       var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false;
+      var head = hero.nextElementSibling && hero.nextElementSibling.querySelector('h1, h2, h3');
       function fade() {
         ticking = false;
         if (reduce.matches) return gsap.set(fading, { clearProps: 'opacity' });
         // Klaar na 70% van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
-        var p = clamp((top0 - hero.getBoundingClientRect().top) / (0.7 * hero.offsetHeight), 0, 1);
-        gsap.set(fading, { opacity: 1 - p * p });
+        // Afgelegd / (afgelegd + wat de kop nog moet tot de helft van het scherm)
+        var done = top0 - hero.getBoundingClientRect().top, r = head && head.getBoundingClientRect();
+        var left = r ? r.top + r.height / 2 - window.innerHeight / 2 : 0.7 * hero.offsetHeight - done;
+        var p = left > 0 ? clamp(done / (done + left), 0, 1) : 1;
+        gsap.set(fading, { opacity: 1 - p * p * (3 - 2 * p) });
       }
       window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(fade); } }, { passive: true });
       fade();
@@ -805,7 +810,7 @@
 
 
 
-  /* Scrollrij, eindeloos: de actieve kaart staat in het midden van de rij. Een pijl schuift naar de volgende of vorige
+  /* Scrollrij, eindeloos: de actieve kaart staat in het midden van de rij, en de rij begint op de breedste kaart. Een pijl schuift naar de volgende of vorige
      kaart, met dezelfde beweging als het zelf doorschuiven: elke 4 seconden als de rij in beeld is, niet bij hover, focus of
      reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
      de vaart door en remt af op een kaart. site.js doet het uitlijnen zelf met GSAP; de scroll-snap uit de class (voor
@@ -927,7 +932,7 @@
     list.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
     list.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
-    list.scrollLeft = posOf(items[0]);
+    list.scrollLeft = posOf(items.reduce(function (a, b) { return b.offsetWidth > a.offsetWidth ? b : a; }));
     schedule();
     return function (d) { go(d); schedule(); };
   }
