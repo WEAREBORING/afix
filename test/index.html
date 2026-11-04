@@ -493,17 +493,28 @@
     }
     function to(top) { window.scrollTo(0, window.scrollY + team.getBoundingClientRect().top - top); }
     var sw = Math.max(Math.min(W * 0.4, 620), Math.min(W - 32, 340));
+    // Het zichtbare vlak: de foto min wat de clip-path boven en onder wegsnijdt
+    function frame() {
+      var m = img.style.clipPath.match(/inset\((.*?)(?: round (.*))?\)/), v = m[1].split(' ').map(parseFloat), b = img.getBoundingClientRect();
+      var top = v[0], bottom = v.length > 2 ? v[2] : v[0];
+      return { left: b.left, top: b.top + top, width: b.width, height: b.height - top - bottom, cut: top, radius: m[2] ? parseFloat(m[2]) : 0 };
+    }
     to(H);
     setTimeout(function () {
-      var a = img.getBoundingClientRect(), r = parseFloat(getComputedStyle(img).borderTopLeftRadius);
-      checks['team: begint als in het prototype'] = Math.abs(a.width - sw) < 1 && Math.abs(a.height - sw * 0.62) < 1 && Math.abs(a.left - (W - sw) / 2) < 1 && r === 20;
-      to(0);
+      var a = frame();
+      checks['team: begint als in het prototype'] = Math.abs(a.width - sw) < 1 && Math.abs(a.height - sw * 0.62) < 1 && Math.abs(a.left - (W - sw) / 2) < 1 && Math.abs(a.radius - 20) < 1;
+      to(H * 0.5);
       setTimeout(function () {
-        var b = img.getBoundingClientRect();
-        checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && parseFloat(getComputedStyle(img).borderTopLeftRadius) === 0;
-        checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
-        done();
-      }, 1100);
+        var c = frame();
+        to(0);
+        setTimeout(function () {
+          var b = frame();
+          checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && b.radius === 0;
+          checks['team: parallax, de foto schuift binnen het vlak'] = c.cut / c.height > b.cut / b.height;
+          checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
+          done();
+        }, 1100);
+      }, 300);
     }, 300);
   }
 

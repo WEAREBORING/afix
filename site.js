@@ -1,4 +1,4 @@
-/* Afix site.js v0.53: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.54: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -441,8 +441,8 @@
      een keer af zodra de bovenkant van de kop op 78% van de schermhoogte komt en hangt verder niet aan het scrollen. Een
      woord begint onzichtbaar, wordt dan een wazige gloed (de tekst zelf doorzichtig, met een vage schaduw in signaalgeel,
      surface/accent) en lost op in scherpe tekst in de kleur uit de class: de tekst wordt dekkend, de gloed kleurt naar de
-     tekstkleur en verdwijnt. Tempo gemeten op butter.video: elke 0,05 seconde start een woord, en een woord duurt 0,95
-     seconde. De tag boven de kop (element ervoor) en de knop eronder (element na de wrapper van de kop) komen mee: de tag
+     tekstkleur en verdwijnt. Tempo: elke 0,04 seconde start een woord en een woord duurt 0,76 seconde, met een uitlopende
+     easing per woord (iets sneller dan butter.video, keuze van de gebruiker). De tag boven de kop (element ervoor) en de knop eronder (element na de wrapper van de kop) komen mee: de tag
      eerst, de knop als het laatste woord start, met dezelfde beweging als de hero. Woorden blijven gewone inline
      spans, dus de tekst breekt op dezelfde plekken af. Schermlezers lezen de gewone tekst (aria-label op de kop, de woorden
      zijn aria-hidden). Reduced motion en zonder site.js: gewoon de tekst. */
@@ -486,7 +486,7 @@
         ink = (getComputedStyle(el).color.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
         words.forEach(function (w, i) {
           // In stapjes van 2%, zodat er alleen iets gezet wordt als het woord echt verandert
-          var t = Math.round(clamp((progress.n - i) / soft, 0, 1) * 50) / 50;
+          var t = Math.round((1 - Math.pow(1 - clamp((progress.n - i) / soft, 0, 1), 3)) * 50) / 50;
           if (last[i] === t) return;
           last[i] = t;
           if (t === 1) gsap.set(w, { clearProps: 'opacity,color,textShadow' });
@@ -501,8 +501,8 @@
       }
       onceInView(el, 22, function () {
         arrive(tag, 0);
-        arrive(button, 0.1 + (words.length - 1) * 0.05);
-        gsap.to(progress, { n: words.length + soft, delay: 0.1, duration: (words.length + soft) * 0.05, ease: 'none', onUpdate: draw });
+        arrive(button, 0.1 + (words.length - 1) * 0.04);
+        gsap.to(progress, { n: words.length + soft, delay: 0.1, duration: (words.length + soft) * 0.04, ease: 'none', onUpdate: draw });
       });
     });
   });
@@ -538,7 +538,9 @@
       text.textContent = '';
       sentence.trim().split(/\s+/).forEach(function (w, k) {
         var mask = document.createElement('span'), word = document.createElement('span');
-        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.2em; margin-bottom: -0.2em;';
+        // kernwaarde_text is getrimd (text-box-trim): het tekstkader is 0,72em, van hoofdletter tot basislijn. Stokken en
+        // onderkanten vallen daarbuiten, dus het masker krijgt daar ruimte voor en de woorden starten 190% lager
+        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding: 0.1em 0 0.5em; margin: -0.1em 0 -0.5em;';
         word.style.display = 'inline-block';
         word.textContent = w;
         mask.appendChild(word);
@@ -547,7 +549,7 @@
         inner.push(word);
       });
       gsap.set(rules, { transformOrigin: dir > 0 ? 'right center' : 'left center' });
-      gsap.set(inner, { yPercent: 130, visibility: 'hidden' });
+      gsap.set(inner, { yPercent: 190, visibility: 'hidden' });
       // De eerste rij start later dan in het prototype, pas als de achtergrond donker wordt: wit op licht is onzichtbaar
       return { el: item, dir: dir, rules: rules, title: title, inner: inner, shown: false, start: i ? 1 : 0.8 };
     });
@@ -555,7 +557,7 @@
       r.shown = on;
       // Verborgen woorden ook echt onzichtbaar: of een masker sluit hangt anders af van lettertype en scherm
       if (on) gsap.set(r.inner, { visibility: 'visible' });
-      gsap.to(r.inner, { yPercent: on ? 0 : 130, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
+      gsap.to(r.inner, { yPercent: on ? 0 : 190, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
     }
     var theme = { m: 0 }, isDark = null, ticking = false;
     function paint() {
@@ -600,7 +602,9 @@
      schermvullend vlak en de foto staat daarin absoluut; hij begint 40% van de schermbreedte (maximaal 620px, minstens 340px
      of de schermbreedte min 32px) met verhouding 0,62 en groeit naar het hele vlak terwijl de bovenkant van dat vlak van de
      onderrand naar de bovenrand van het scherm gaat, dus de bovenhoeken landen in de hoeken van het scherm. Geen ruimte
-     onder de foto: Reviews sluit erop aan. Reduced motion en zonder site.js: de foto uit de class. */
+     onder de foto: Reviews sluit erop aan. Parallax (niet in het prototype): de foto is 15% hoger dan het zichtbare vlak en
+     beweegt daarin langzamer dan de scroll, van het moment dat hij binnenkomt tot hij weg is; een clip-path snijdt hem op
+     de maat van het vlak, dus er is geen extra element nodig. Reduced motion en zonder site.js: de foto uit de class. */
   each('[data-a-team]', function (team) {
     var img = team.querySelector('img');
     if (!img || reduce.matches) return;
@@ -611,13 +615,14 @@
       img.sizes = '(max-aspect-ratio: 16/9) 178vh, 100vw';
       function update() {
         ticking = false;
-        var g = clamp((H - team.getBoundingClientRect().top) / H, 0, 1);
+        var top = team.getBoundingClientRect().top, g = clamp((H - top) / H, 0, 1);
+        var h = sh + (H - sh) * g, extra = h * 0.15, o = extra * (1 - clamp((H - top) / (2 * H), 0, 1));
         gsap.set(img, {
           left: (W - sw) / 2 * (1 - g),
-          top: Math.min(H * 0.06, 56) * (1 - g),
+          top: Math.min(H * 0.06, 56) * (1 - g) - o,
           width: sw + (W - sw) * g,
-          height: sh + (H - sh) * g,
-          borderRadius: 20 * (1 - g)
+          height: h + extra,
+          clipPath: 'inset(' + o + 'px 0px ' + (extra - o) + 'px 0px round ' + 20 * (1 - g) + 'px)'
         });
       }
       function measure() {
