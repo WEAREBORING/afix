@@ -432,7 +432,7 @@
   }
 
   function valueChecks(done) {
-    // Hangt aan de scroll: eerst woord buiten beeld, lijn op 0; rij in beeld: alles op zijn plek; terug: weer weg. Paginakleur loopt mee
+    // Rijen hangen aan de scroll: eerst woord buiten beeld, lijn op 0; rij in beeld: alles op zijn plek; terug: weer weg. Paginakleur is een timeline
     var items = document.querySelectorAll('[data-a-value]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     var title = items[0].querySelector('.kernwaarde_title'), second = items[1].querySelector('.kernwaarde_title');
     var rule = items[0].querySelector('.kernwaarde_rule'), text = items[0].querySelector('.kernwaarde_text'), slot = $('#kw-slot');
@@ -450,23 +450,30 @@
       checks['kernwaarden: om en om buiten beeld, lijn op 0'] = x(title) > W / 2 && x(second) < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0;
       checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
       checks['kernwaarden: subtekst helemaal verborgen in het masker'] = [].every.call(text.children, function (m) { return m.firstElementChild.getBoundingClientRect().top >= m.getBoundingClientRect().bottom && getComputedStyle(m.firstElementChild).visibility === 'hidden'; });
-      checks['paginakleur: begint licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(29, 29, 27)';
-      to(sec, H * 0.55);
+      checks['paginakleur: begint licht, kernwaarden al wit'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)' && getComputedStyle(title).color === 'rgb(255, 255, 255)';
+      to(sec, H * 0.5);
       setTimeout(function () {
         var between = bg(sec), parts = between.match(/\d+/g).map(Number);
-        checks['paginakleur: halverwege een mengkleur'] = parts[0] > 39 && parts[0] < 245 && between === bg(before);
-        // Kop net onder de bovenrand: rij helemaal binnen, pagina donker
-        to(items[0], H * 0.3);
+        checks['paginakleur: timeline loopt door een mengkleur'] = parts[0] > 39 && parts[0] < 245 && between === bg(before);
+        // Niet verder scrollen: de kleur moet vanzelf helemaal donker worden, ook de tekst van de sectie ervoor
         setTimeout(function () {
-          checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1 && getComputedStyle(text.querySelector('span span')).visibility === 'visible';
-          checks['paginakleur: donker'] = bg(sec) === 'rgb(39, 51, 39)' && getComputedStyle(title).color === 'rgb(255, 255, 255)';
-          to(items[0], H);
+          checks['paginakleur: eindigt vanzelf donker'] = bg(sec) === 'rgb(39, 51, 39)' && bg(before) === 'rgb(39, 51, 39)' && getComputedStyle(before).color === 'rgb(255, 255, 255)';
+          // Rij helemaal binnen
+          to(items[0], H * 0.3);
           setTimeout(function () {
-            checks['kernwaarden: terugscrollen draait het om'] = x(title) > W / 2 && gsap.getProperty(text.querySelector('span span'), 'yPercent') > 100 && getComputedStyle(text.querySelector('span span')).visibility === 'hidden';
-            done();
-          }, 1400);
-        }, 1300);
-      }, 300);
+            checks['kernwaarden: rij op zijn plek, lijn vol, subtekst zichtbaar'] = Math.abs(x(title)) < 1 && gsap.getProperty(rule, 'scaleX') === 1 && Math.abs(gsap.getProperty(text.querySelector('span span'), 'yPercent')) < 1 && getComputedStyle(text.querySelector('span span')).visibility === 'visible';
+            to(items[0], H);
+            setTimeout(function () {
+              checks['kernwaarden: terugscrollen draait het om'] = x(title) > W / 2 && gsap.getProperty(text.querySelector('span span'), 'yPercent') > 100 && getComputedStyle(text.querySelector('span span')).visibility === 'hidden';
+              to(sec, H * 0.9);
+              setTimeout(function () {
+                checks['paginakleur: terugscrollen wordt weer licht'] = bg(sec) === 'rgb(245, 240, 232)' && bg(before) === 'rgb(245, 240, 232)';
+                done();
+              }, 1100);
+            }, 1400);
+          }, 1300);
+        }, 900);
+      }, 350);
     }, 300);
   }
 
@@ -489,7 +496,7 @@
         checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && parseFloat(getComputedStyle(img).borderTopLeftRadius) === 0;
         checks['paginakleur: blijft donker achter de foto'] = getComputedStyle($('#kernwaarden')).backgroundColor === 'rgb(39, 51, 39)';
         done();
-      }, 300);
+      }, 1100);
     }, 300);
   }
 

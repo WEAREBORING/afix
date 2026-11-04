@@ -1,4 +1,4 @@
-/* Afix site.js v0.50: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.51: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -512,15 +512,15 @@
      (Nuchter rechts, Direct links, Eigenwijs rechts) van net buiten het scherm naar het midden, de lijn (kernwaarde_rule)
      groeit vanaf dezelfde kant, 1,4 keer zo snel; de slotlijn na de lijst hoort bij de laatste rij. Boven q 0,92 schuift de
      subtekst (kernwaarde_text) woord voor woord omhoog uit een masker, onder q 0,7 weer terug.
-     Paginakleur: Cultuur en Kernwaarden delen een kleur die van licht naar donker loopt als de bovenkant van Kernwaarden
-     van 80% naar 30% van de schermhoogte gaat. Anders dan het prototype blijft hij daarna donker, ook achter de teamfoto
-     (keuze van de gebruiker). site.js mengt daarvoor de thema-variabelen op die twee
-     secties, zodat tekst, lijnen en knop meekleuren; Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced motion
-     en zonder site.js: alles uit de class. */
+     Paginakleur: anders dan het prototype een timeline en niet aan de scroll (keuze van de gebruiker, zo kun je niet op een
+     tussenkleur eindigen). Komt de bovenkant van Kernwaarden boven 55% van de schermhoogte, dan loopt de achtergrond van
+     Cultuur en Kernwaarden in 0,8 seconde van licht naar donker; scrol je terug tot onder 65%, dan weer terug. Daarna blijft
+     hij donker, ook achter de teamfoto. site.js mengt daarvoor de thema-variabelen: bij Cultuur kleuren tekst, lijnen en
+     knop mee, de tekst van Kernwaarden blijft altijd wit. Werk krijgt alleen de achtergrond, voor hoge schermen. Reduced
+     motion en zonder site.js: alles uit de class. */
   var values = [].slice.call(document.querySelectorAll('[data-a-value]'));
   if (values.length && !reduce.matches) withGsap(function (gsap) {
     function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
-    function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
     function rgbOf(el, prop) { return (getComputedStyle(el)[prop].match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); }
     function mix(a, b, t) { return a.map(function (v, k) { return Math.round(v + (b[k] - v) * t); }).join(', '); }
     var section = values[0].closest('section');
@@ -553,24 +553,25 @@
       if (on) gsap.set(r.inner, { visibility: 'visible' });
       gsap.to(r.inner, { yPercent: on ? 0 : 130, duration: 0.7, stagger: 0.035, ease: 'power4.out', overwrite: true, onComplete: function () { if (!on) gsap.set(r.inner, { visibility: 'hidden' }); } });
     }
-    var lastMix = -1, ticking = false;
-    function paint(m) {
-      var bg = 'rgb(' + mix(light, dark, m) + ')', fg = mix(ink, paper, m);
-      gsap.set([cultuur, section], {
+    var theme = { m: 0 }, isDark = null, ticking = false;
+    function paint() {
+      var m = theme.m, bg = 'rgb(' + mix(light, dark, m) + ')', fg = mix(ink, paper, m);
+      gsap.set(cultuur, {
         '--_theme---surface--page': bg,
-        '--_theme---surface--dark': bg,
         '--_theme---text--primary': 'rgb(' + fg + ')',
-        '--_theme---text--inverse': 'rgb(' + fg + ')',
-        '--_theme---border--strong': 'rgba(' + fg + ', ' + (0.5 - 0.3 * m) + ')',
-        '--_theme---border--inverse-subtle': 'rgba(' + fg + ', ' + (0.16 + 0.04 * m) + ')'
+        '--_theme---border--strong': 'rgba(' + fg + ', ' + (0.5 - 0.3 * m) + ')'
       });
+      gsap.set(section, { '--_theme---surface--dark': bg });
       if (werk) gsap.set(werk, { backgroundColor: bg });
     }
     function update() {
       ticking = false;
       var H = window.innerHeight, W = document.documentElement.clientWidth;
-      var m = +easeInOut(clamp((H * 0.8 - section.getBoundingClientRect().top) / (H * 0.5), 0, 1)).toFixed(3);
-      if (m !== lastMix) { lastMix = m; paint(m); }
+      // Twee grenzen, zodat de kleur niet heen en weer springt als je precies op de grens stilstaat
+      var top = section.getBoundingClientRect().top, wanted = top < H * (isDark ? 0.65 : 0.55);
+      if (isDark === null) { theme.m = wanted ? 1 : 0; paint(); }
+      else if (wanted !== isDark) gsap.to(theme, { m: wanted ? 1 : 0, duration: 0.8, ease: 'power2.inOut', overwrite: true, onUpdate: paint });
+      isDark = wanted;
       rows.forEach(function (r) {
         var box = r.el.getBoundingClientRect(), q = clamp((H - box.top - box.height / 2) / (H * 0.45), 0, 1);
         gsap.set(r.title, { x: (W / 2 + r.title.offsetWidth / 2 + 24) * r.dir * (1 - easeOut(q)) });
