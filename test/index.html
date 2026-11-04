@@ -21,6 +21,8 @@
   .kennis-card_arrow { opacity: 0; }
   .tabpanel { display: none; }
   .tabpanel:first-child { display: block; }
+  #kw-team img { width: 100%; height: 100%; object-fit: cover; background: #888; }
+  #kw-team { width: 10rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 1rem; }
   .row { display: flex; gap: 1rem; overflow: auto hidden; scroll-snap-type: x mandatory; width: 30rem; }
   .row > div { flex: none; width: 12rem; height: 4rem; background: #eee; scroll-snap-align: start; }
   .stack { display: grid; }
@@ -106,6 +108,16 @@
   <a href="#" id="fill-button">Maak kennis</a>
 </div>
 <div style="height: 60rem"></div>
+
+<section id="kernwaarden" style="overflow: clip"><div class="padding-section"><div style="display: flex; flex-direction: column; align-items: center">
+  <div id="kw-eyebrow">DNA</div>
+  <div style="width: 100%">
+    <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Nuchter</h3><p class="kernwaarde_text" style="text-align: center">Geen blabla. Gewoon keuzes die blijven werken.</p></div>
+    <div data-a-value="item" class="kernwaarde"><div class="kernwaarde_rule" style="height: 1px; background: #000"></div><h3 class="kernwaarde_title" style="text-align: center">Direct</h3><p class="kernwaarde_text" style="text-align: center">Minder schakels.</p></div>
+  </div>
+  <div class="kernwaarde_rule" id="kw-slot" style="height: 1px; width: 100%; background: #000"></div>
+  <div data-a-team="photo" id="kw-team"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
+</div></div></section>
 
 <p id="result">Bezig...</p>
 
@@ -271,7 +283,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(report); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(report); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -384,6 +396,54 @@
           }, 300);
         }, 1400);
       }, 500);
+    }, 300);
+  }
+
+  function valueChecks(done) {
+    // Rijen spelen om en om af: eerst woord buiten het scherm en lijn op 0, daarna alles terug naar de class
+    var items = document.querySelectorAll('[data-a-value]'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var title = items[0].querySelector('.kernwaarde_title'), second = items[1].querySelector('.kernwaarde_title');
+    var rule = items[0].querySelector('.kernwaarde_rule'), text = items[0].querySelector('.kernwaarde_text'), slot = $('#kw-slot');
+    var sentence = 'Geen blabla. Gewoon keuzes die blijven werken.';
+    if (still) {
+      checks['kernwaarden: reduced motion gewoon de tekst'] = !title.style.transform && text.textContent === sentence && !text.children.length;
+      return done();
+    }
+    window.scrollTo(0, 0);
+    setTimeout(function () {
+      var W = document.documentElement.clientWidth;
+      checks['kernwaarden: om en om buiten beeld, lijn op 0'] = gsap.getProperty(title, 'x') > W / 2 && gsap.getProperty(second, 'x') < -W / 2 && gsap.getProperty(rule, 'scaleX') === 0 && gsap.getProperty(slot, 'scaleX') === 0 && getComputedStyle($('#kw-eyebrow')).opacity === '0';
+      checks['kernwaarden: subtekst gesplitst met dezelfde tekst'] = text.children.length === 7 && text.textContent === sentence;
+      window.scrollTo(0, window.scrollY + items[1].getBoundingClientRect().top - innerHeight * 0.5);
+      setTimeout(function () {
+        checks['kernwaarden: alles terug naar de class'] = !title.style.transform && !second.style.transform && !rule.style.transform && !slot.style.transform && !text.children.length && text.textContent === sentence && !$('#kw-eyebrow').getAttribute('style');
+        done();
+      }, 1700);
+    }, 300);
+  }
+
+  function teamChecks(done) {
+    // Teamfoto: groeit met de scroll tot schermvullend; bij reduced motion blijft hij de foto uit de class
+    var team = $('#kw-team'), img = team.querySelector('img'), H = innerHeight, W = document.documentElement.clientWidth;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      checks['team: reduced motion de foto uit de class'] = team.style.height === '' && img.getBoundingClientRect().width === team.offsetWidth;
+      return done();
+    }
+    function to(top) { window.scrollTo(0, window.scrollY + team.getBoundingClientRect().top - top); }
+    to(H * 0.95);
+    setTimeout(function () {
+      var small = img.getBoundingClientRect().width, r = parseFloat(getComputedStyle(img).borderTopLeftRadius);
+      to(0);
+      setTimeout(function () {
+        var b = img.getBoundingClientRect();
+        checks['team: begint klein met afgeronde hoeken'] = Math.abs(small - 160) < 40 && r > 0;
+        checks['team: schermvullend, hoeken in de hoeken'] = Math.abs(b.left) < 1 && Math.abs(b.top) < 1 && Math.abs(b.width - W) < 1 && Math.abs(b.height - H) < 1 && parseFloat(getComputedStyle(img).borderTopLeftRadius) === 0;
+        to(-H * 0.5);
+        setTimeout(function () {
+          checks['team: blijft staan tijdens het vasthouden'] = Math.abs(img.getBoundingClientRect().top) < 1;
+          done();
+        }, 300);
+      }, 300);
     }, 300);
   }
 

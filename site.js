@@ -1,4 +1,4 @@
-/* Afix site.js v0.43: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.44: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -26,6 +26,16 @@
   });
   // Naar een scrollpositie springen, ook als Lenis loopt (anders zet Lenis de oude positie terug)
   function jumpTo(y) { if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); }
+  // fn een keer aanroepen zodra de bovenkant van el bottom procent boven de onderrand van het scherm komt, of als el daar
+  // al voorbij is (bijvoorbeeld bij herladen lager op de pagina)
+  function onceInView(el, bottom, fn) {
+    var watch = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting && entries[0].boundingClientRect.top >= 0) return;
+      watch.disconnect();
+      fn();
+    }, { rootMargin: '0px 0px -' + bottom + '% 0px' });
+    watch.observe(el);
+  }
 
   /* data-a-year: zet het huidige jaar (bijvoorbeeld het copyright in de footer) */
   each('[data-a-year]', function (el) { el.textContent = new Date().getFullYear(); });
@@ -483,15 +493,93 @@
       function arrive(item, delay) {
         if (item) gsap.to(item, { opacity: 1, y: 0, filter: 'blur(0rem)', delay: delay, duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
       }
-      var watch = new IntersectionObserver(function (entries) {
-        // Ook starten als de kop al voorbij is, bijvoorbeeld bij herladen lager op de pagina
-        if (!entries[0].isIntersecting && entries[0].boundingClientRect.top >= 0) return;
-        watch.disconnect();
+      onceInView(el, 22, function () {
         arrive(tag, 0);
         arrive(button, 0.1 + (words.length - 1) * 0.05);
         gsap.to(progress, { n: words.length + soft, delay: 0.1, duration: (words.length + soft) * 0.05, ease: 'none', onUpdate: draw });
-      }, { rootMargin: '0px 0px -22% 0px' });
-      watch.observe(el);
+      });
+    });
+  });
+
+  /* data-a-value (Item - Kernwaarde): per rij een keer afspelen zodra de rij op 85% van de schermhoogte komt, om en om
+     vanaf rechts en links (Nuchter rechts, Direct links, Eigenwijs rechts). De lijn (kernwaarde_rule) groeit vanaf de kant
+     van het woord, het woord (kernwaarde_title) schuift van buiten het scherm naar het midden en de subtekst
+     (kernwaarde_text) schuift woord voor woord omhoog uit een masker. De slotlijn na de lijst hoort bij de laatste rij, de
+     eyebrow ervoor bij de eerste. Reduced motion en zonder site.js: alles staat er gewoon. */
+  var values = [].slice.call(document.querySelectorAll('[data-a-value]'));
+  if (values.length && !reduce.matches) withGsap(function (gsap) {
+    var list = values[0].parentElement, eyebrow = list.previousElementSibling, closing = list.nextElementSibling;
+    var from = { opacity: 0, y: '1.5rem', filter: 'blur(0.75rem)' };
+    if (eyebrow) gsap.set(eyebrow, from);
+    values.forEach(function (item, i) {
+      var dir = i % 2 ? -1 : 1, rules = [item.querySelector('.kernwaarde_rule')];
+      var title = item.querySelector('.kernwaarde_title'), text = item.querySelector('.kernwaarde_text');
+      if (i === values.length - 1 && closing && closing.matches('.kernwaarde_rule')) rules.push(closing);
+      // Gewone tekst met spaties ertussen: de regels breken gelijk af en een schermlezer leest gewoon de zin
+      var sentence = text.textContent, inner = [];
+      text.textContent = '';
+      sentence.trim().split(/\s+/).forEach(function (w, k) {
+        var mask = document.createElement('span'), word = document.createElement('span');
+        mask.style.cssText = 'display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.15em; margin-bottom: -0.15em;';
+        word.style.display = 'inline-block';
+        word.textContent = w;
+        mask.appendChild(word);
+        if (k) text.appendChild(document.createTextNode(' '));
+        text.appendChild(mask);
+        inner.push(word);
+      });
+      gsap.set(rules, { scaleX: 0, transformOrigin: dir > 0 ? 'right center' : 'left center' });
+      gsap.set(title, { x: dir * (document.documentElement.clientWidth / 2 + title.offsetWidth / 2 + 24) });
+      gsap.set(inner, { yPercent: 110 });
+      onceInView(item, 15, function () {
+        if (!i && eyebrow) gsap.to(eyebrow, { opacity: 1, y: 0, filter: 'blur(0rem)', duration: 1.1, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
+        gsap.to(rules, { scaleX: 1, duration: 0.9, ease: 'power3.out', clearProps: 'transform,transformOrigin' });
+        gsap.to(title, { x: 0, duration: 1.1, ease: 'power3.out', clearProps: 'transform' });
+        gsap.to(inner, { yPercent: 0, delay: 0.3, duration: 0.7, stagger: 0.035, ease: 'power3.out', onComplete: function () { text.textContent = sentence; } });
+      });
+    });
+  });
+
+  /* data-a-team (kernwaarden_team): de teamfoto groeit met de scroll van zijn plek onder de lijst naar schermvullend. De
+     groei loopt terwijl de bovenkant van de foto van 90% van de schermhoogte naar de bovenrand gaat, zodat de bovenhoeken
+     in de hoeken van het scherm landen; daarna blijft hij 0,6 schermhoogte staan en schuift hij weg. kernwaarden_team wordt
+     daarvoor het podium (schermbreed, sticky ruimte) en de foto zelf groeit daarin. Geen ruimte onder de foto: Reviews sluit
+     erop aan. Reduced motion en zonder site.js: de foto uit de class. */
+  each('[data-a-team]', function (team) {
+    var img = team.querySelector('img');
+    if (!img || reduce.matches) return;
+    withGsap(function (gsap) {
+      var pad = team.closest('.padding-section'), touch = window.matchMedia('(hover: none)');
+      var hold = 0.6, w0, h0, r0, W, H, ticking = false;
+      // Schermvullend met object-fit cover: op een smal scherm bepaalt de hoogte hoe groot de foto (16:9) wordt
+      img.sizes = '(max-aspect-ratio: 16/9) 178vh, 100vw';
+      function update() {
+        ticking = false;
+        var p = clamp((0.9 * H - team.getBoundingClientRect().top) / (0.9 * H), 0, 1), e = p * p * (3 - 2 * p);
+        gsap.set(img, { width: w0 + (W - w0) * e, height: h0 + (H - h0) * e, borderRadius: r0 * (1 - e) });
+      }
+      function measure() {
+        ['width', 'height', 'maxWidth', 'overflow', 'aspectRatio'].forEach(function (k) { team.style[k] = ''; });
+        gsap.set(img, { clearProps: 'all' });
+        if (pad) pad.style.paddingBottom = '';
+        W = document.documentElement.clientWidth;
+        H = window.innerHeight;
+        w0 = team.offsetWidth;
+        h0 = team.offsetHeight;
+        r0 = parseFloat(getComputedStyle(team).borderTopLeftRadius) || 0;
+        team.style.overflow = 'visible';
+        team.style.maxWidth = 'none';
+        team.style.aspectRatio = 'auto';
+        team.style.width = W + 'px';
+        team.style.height = H * (1 + hold) + 'px';
+        gsap.set(img, { position: 'sticky', top: 0, display: 'block', marginLeft: 'auto', marginRight: 'auto', maxWidth: 'none' });
+        if (pad) pad.style.paddingBottom = '0';
+        update();
+      }
+      window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+      // Op de telefoon verandert de hoogte als de adresbalk inklapt: alleen bij een echte breedtewijziging opnieuw meten
+      window.addEventListener('resize', function () { if (!touch.matches || document.documentElement.clientWidth !== W) measure(); });
+      measure();
     });
   });
 
