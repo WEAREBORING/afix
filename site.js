@@ -1,4 +1,4 @@
-/* Afix site.js v0.77: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.78: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1516,16 +1516,80 @@
     });
   });
 
-  /* Datums (kennis-card_date en kennis-session_date): Webflow schrijft Engelse maanden ("14 Feb 26", "12 December 2026").
-     site.js maakt er "14 feb ’26" en "12 december 2026" van. Op de class en niet op een attribuut: hij staat in elke lijst. */
+  /* Datums (kennis-card_date, kennis-session_date en data-a-date): Webflow schrijft Engelse maanden ("14 Feb 26",
+     "12 December 2026", "January 29, 2026"). site.js maakt er "14 feb ’26" en "12 december 2026" van. Op de class en niet
+     op een attribuut in de lijsten: die class staat in elke kaart. */
   var monthsEn = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
   var monthsShort = 'jan feb mrt apr mei jun jul aug sep okt nov dec'.split(' ');
   var monthsLong = 'januari februari maart april mei juni juli augustus september oktober november december'.split(' ');
-  each('.kennis-card_date, .kennis-session_date', function (el) {
-    var m = /^(\d{1,2}) ([A-Za-z]+) (\d{2}|\d{4})$/.exec(el.textContent.trim());
+  each('.kennis-card_date, .kennis-session_date, [data-a-date]', function (el) {
+    var text = el.textContent.trim().replace(/^([A-Za-z]+) (\d{1,2}), (\d{4})$/, '$2 $1 $3');
+    var m = /^(\d{1,2}) ([A-Za-z]+) (\d{2}|\d{4})$/.exec(text);
     var i = m ? monthsEn.indexOf(m[2].slice(0, 3).toLowerCase()) : -1;
     if (i < 0) return;
     el.textContent = +m[1] + ' ' + (m[2].length > 3 ? monthsLong[i] : monthsShort[i]) + ' ' + (m[3].length === 2 ? '’' + m[3] : m[3]);
+  });
+
+  /* data-a-toc (zijkolom blog, kennis-detail_aside): inhoudsopgave uit de Kop 2's in data-a-toc-content. De eerste link in
+     data-a-toc-list is het voorbeeld voor de andere. Geen koppen: het blok verdwijnt. Zolang de zijkolom meeloopt (sticky,
+     desktop) is de kop waar je bent donker; op telefoon staat de lijst boven de tekst en is alles even donker. */
+  each('[data-a-toc]', function (aside) {
+    var list = aside.querySelector('[data-a-toc-list]'), content = aside.parentNode.querySelector('[data-a-toc-content]');
+    var sample = list && list.querySelector('a');
+    if (!sample || !content) return;
+    var heads = [].slice.call(content.querySelectorAll('h2')), used = {};
+    if (!heads.length) { list.parentNode.style.display = 'none'; return; }
+    var links = heads.map(function (head) {
+      var slug = head.textContent.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'kop';
+      used[slug] = (used[slug] || 0) + 1;
+      if (!head.id) head.id = used[slug] > 1 ? slug + '-' + used[slug] : slug;
+      var link = sample.cloneNode(true);
+      link.textContent = link.title = head.textContent.trim();
+      link.href = '#' + head.id;
+      // Zelf scrollen naar een getal: Lenis telt bij een element de scroll-padding van de nav erbij op
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        history.replaceState(null, '', link.hash);
+        var y = head.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(aside).top) || 0);
+        if (lenis) lenis.scrollTo(y); else window.scrollTo(0, y);
+      });
+      list.appendChild(link);
+      return link;
+    });
+    list.removeChild(sample);
+    withGsap(function (gsap) {
+      var current = -1, queued = false;
+      function update() {
+        queued = false;
+        var sticky = getComputedStyle(aside).position === 'sticky', at = 0;
+        if (!sticky) { if (current !== -1) gsap.set(links, { clearProps: 'opacity' }); current = -1; return; }
+        heads.forEach(function (head, i) { if (head.getBoundingClientRect().top <= innerHeight * 0.4) at = i; });
+        if (at === current) return;
+        var first = current === -1;
+        current = at;
+        links.forEach(function (link, i) {
+          link.setAttribute('aria-current', i === at ? 'true' : 'false');
+          gsap.to(link, { opacity: i === at ? 1 : 0.2, duration: first || reduce.matches ? 0 : 0.3, ease: 'power2.out', overwrite: true });
+        });
+      }
+      function queue() { if (!queued) { queued = true; requestAnimationFrame(update); } }
+      window.addEventListener('scroll', queue, { passive: true });
+      window.addEventListener('resize', queue);
+      update();
+    });
+  });
+
+  /* data-a-share (Deel deze post): de links krijgen hier het adres en de titel van de pagina. */
+  each('[data-a-share]', function (link) {
+    var url = encodeURIComponent(location.origin + location.pathname), h1 = document.querySelector('h1');
+    var title = encodeURIComponent((h1 ? h1.textContent : document.title).trim());
+    var to = {
+      linkedin: 'https://www.linkedin.com/sharing/share-offsite/?url=' + url,
+      facebook: 'https://www.facebook.com/sharer/sharer.php?u=' + url,
+      whatsapp: 'https://wa.me/?text=' + title + '%20' + url
+    }[link.getAttribute('data-a-share')];
+    if (to) link.href = to;
   });
 
   /* data-a-subnav (Section - Hero Kennis): de secundaire navigatie (Figma 935:7556). Zodra je scrolt schuift hij van de hero

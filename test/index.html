@@ -167,6 +167,16 @@
 </section>
 <div style="height: 10rem"></div>
 
+<section id="dt">
+  <span data-a-date id="dt-date">January 29, 2026</span>
+  <a data-a-share="linkedin" id="dt-li" href="#">LinkedIn</a><a data-a-share="whatsapp" id="dt-wa" href="#">WhatsApp</a>
+  <div><aside data-a-toc id="dt-none"><div id="dt-none-block"><div data-a-toc-list><a href="#">Kop 2</a></div></div></aside><div data-a-toc-content><p>Geen koppen</p></div></div>
+  <div style="display: flex">
+    <aside data-a-toc id="dt-aside" style="position: sticky; top: 20px; align-self: flex-start; width: 10rem"><div data-a-toc-list id="dt-list"><a href="#" style="opacity: 0.2">Kop 2</a></div></aside>
+    <div data-a-toc-content id="dt-content"><h2>Eerste kop</h2><div style="height: 120vh"></div><h2>Caf&eacute; &amp; koffie</h2><div style="height: 120vh"></div><h2>Eerste kop</h2><div style="height: 120vh"></div></div>
+  </div>
+</section>
+
 <p id="result">Bezig...</p>
 
 <script src="../site.js"></script>
@@ -332,7 +342,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(report); }); }); }); }); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(function () { detailChecks(report); }); }); }); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -820,6 +830,26 @@
         }, 400);
       }, 1000);
     }, 1000);
+  }
+
+  function detailChecks(done) {
+    var list = document.getElementById('dt-list'), links = list.querySelectorAll('a'), content = document.getElementById('dt-content'), heads = content.querySelectorAll('h2');
+    checks['detail: datum in het Nederlands, ook in Amerikaanse notatie'] = document.getElementById('dt-date').textContent === '29 januari 2026';
+    checks['detail: inhoudsopgave een link per Kop 2, zonder voorbeeld'] = links.length === 3 && links[1].textContent === 'Café & koffie';
+    checks['detail: koppen krijgen een uniek anker'] = heads[0].id === 'eerste-kop' && heads[1].id === 'cafe-koffie' && heads[2].id === 'eerste-kop-2' && links[2].getAttribute('href') === '#eerste-kop-2';
+    checks['detail: zonder koppen geen inhoudsopgave'] = document.getElementById('dt-none-block').style.display === 'none';
+    var share = decodeURIComponent(document.getElementById('dt-wa').href);
+    checks['detail: delen met titel en adres van de pagina'] = document.getElementById('dt-li').href.indexOf('linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(location.origin + location.pathname)) > 0 && share.indexOf('wa.me/?text=' + document.querySelector('h1').textContent.trim() + ' ') > 0;
+    window.scrollTo(0, heads[1].getBoundingClientRect().top + window.scrollY - innerHeight * 0.2);
+    setTimeout(function () {
+      checks['detail: de kop waar je bent is donker, de rest vaag'] = links[1].getAttribute('aria-current') === 'true' && getComputedStyle(links[1]).opacity === '1' && getComputedStyle(links[0]).opacity === '0.2';
+      links[2].click();
+      setTimeout(function () {
+        checks['detail: klik scrollt tot onder de nav, met het anker in de url'] = location.hash === '#eerste-kop-2' && Math.abs(heads[2].getBoundingClientRect().top - 20) < 3;
+        history.replaceState(null, '', location.pathname);
+        done();
+      }, 2500);
+    }, 700);
   }
 
   function report() {
