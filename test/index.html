@@ -248,29 +248,33 @@
   }
   function rowNext() {
     var real = [].filter.call(row.children, function (c) { return !c.hasAttribute('aria-hidden'); });
-    function atStart(n) { return Math.abs(real[n].getBoundingClientRect().left - row.getBoundingClientRect().left) < 2; }
+    function atCenter(n) { var c = real[n].getBoundingClientRect(), r = row.getBoundingClientRect(); return Math.abs(c.left + c.width / 2 - r.left - r.width / 2) < 2; }
     checks['rij: kopie ervoor en erna'] = real.length === 5 && row.children.length === 15 && row.children[0].textContent === '1' && row.children[14].textContent === '5';
-    checks['rij start op eerste echte kaart'] = atStart(0);
+    checks['rij start op eerste echte kaart'] = atCenter(0);
     $('#werk [data-a-carousel-next]').click();
     // Bij reduced motion springt de rij, zonder tween
-    setTimeout(function () { checks['rij schuift met GSAP'] = !!window.gsap && gsap.isTweening(row) !== matchMedia('(prefers-reduced-motion: reduce)').matches; }, 100);
     setTimeout(function () {
-      checks['rij volgende kaart'] = atStart(1);
+      var still = matchMedia('(prefers-reduced-motion: reduce)').matches, t = window.gsap && gsap.getTweensOf(row)[0];
+      checks['rij schuift met GSAP'] = !!window.gsap && gsap.isTweening(row) !== still;
+      checks['rij: pijl beweegt als het zelf doorschuiven'] = still || (t.duration() === 1.2 && t.vars.ease === 'power2.inOut');
+    }, 100);
+    setTimeout(function () {
+      checks['rij volgende kaart'] = atCenter(1);
       checks['site.js lijnt uit, niet de harde snap'] = row.style.scrollSnapType === 'none' && row.style.touchAction === 'pan-y';
       $('#werk [data-a-carousel-prev]').click();
       setTimeout(function () {
-        checks['rij vorige kaart'] = atStart(0);
+        checks['rij vorige kaart'] = atCenter(0);
         $('#werk [data-a-carousel-prev]').click();
         setTimeout(function () {
-          checks['eindeloos achteruit'] = atStart(4);
+          checks['eindeloos achteruit'] = atCenter(4);
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
-            checks['eindeloos vooruit'] = atStart(0);
+            checks['eindeloos vooruit'] = atCenter(0);
             caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(report); }); }); });
-          }, 1000);
-        }, 1000);
-      }, 1000);
-    }, 1000);
+          }, 1500);
+        }, 1500);
+      }, 1500);
+    }, 1500);
   }
 
   function heroChecks(done) {

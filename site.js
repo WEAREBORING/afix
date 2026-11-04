@@ -1,4 +1,4 @@
-/* Afix site.js v0.40: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
+/* Afix site.js v0.41: attribuutmodules. Bron: site.js in WEAREBORING/afix. Elke module start alleen als zijn data-a-attribuut op de pagina staat. */
 (function () {
   'use strict';
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -805,8 +805,9 @@
 
 
 
-  /* Scrollrij, eindeloos: een pijl schuift naar de volgende of vorige kaart. Schuift elke 4 seconden zelf door als de rij
-     in beeld is, niet bij hover, focus of reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
+  /* Scrollrij, eindeloos: de actieve kaart staat in het midden van de rij. Een pijl schuift naar de volgende of vorige
+     kaart, met dezelfde beweging als het zelf doorschuiven: elke 4 seconden als de rij in beeld is, niet bij hover, focus of
+     reduced motion. Slepen met muis of vinger: de rij volgt, schiet na loslaten met
      de vaart door en remt af op een kaart. site.js doet het uitlijnen zelf met GSAP; de scroll-snap uit de class (voor
      zonder JS) staat uit, want die snapt hard. */
   function carouselRow(list, items) {
@@ -828,9 +829,10 @@
     var before = copy(), after = copy(), cards = before.concat(items, after);
     before.forEach(function (c) { list.insertBefore(c, items[0]); });
     after.forEach(function (c) { list.appendChild(c); });
+    // De scrollpositie waarop deze kaart in het midden van de rij staat
     function posOf(el) {
-      var start = list.getBoundingClientRect().left + (parseFloat(getComputedStyle(list).scrollPaddingLeft) || 0);
-      return list.scrollLeft + el.getBoundingClientRect().left - start;
+      var row = list.getBoundingClientRect(), card = el.getBoundingClientRect();
+      return list.scrollLeft + card.left + card.width / 2 - row.left - row.width / 2;
     }
     function normalize() {
       if (tween || drag) return;
@@ -851,13 +853,12 @@
       if (tween) tween.kill();
       tween = null;
     }
-    function go(d, auto) {
+    function go(d) {
       // Loopt er nog een tween (snel klikken), dan rekenen vanaf waar die eindigt
       var now = tween ? dest : list.scrollLeft;
       var lefts = cards.map(function (c) { return posOf(c) - now; });
       var to = d > 0 ? lefts.filter(function (x) { return x > 2; })[0] : lefts.filter(function (x) { return x < -2; }).pop();
-      // Zelf doorschuiven: langer en zacht op gang komen; een pijlklik reageert direct
-      if (to !== undefined) scrollTo(clampScroll(now + to), auto ? 1.2 : 0.6, auto ? 'power2.inOut' : 'power3.out');
+      if (to !== undefined) scrollTo(clampScroll(now + to), 1.2, 'power2.inOut');
     }
     function clampScroll(x) { return Math.min(list.scrollWidth - list.clientWidth, Math.max(0, x)); }
     // Naar de kaart die het dichtst bij x ligt; dir 1 of -1 dwingt minstens één kaart verder dan from
@@ -870,7 +871,7 @@
     var inView = false, paused = false, timer;
     function schedule() {
       clearTimeout(timer);
-      timer = setTimeout(function () { if (inView && !paused && !drag && !document.hidden && !reduce.matches) go(1, true); schedule(); }, 4000);
+      timer = setTimeout(function () { if (inView && !paused && !drag && !document.hidden && !reduce.matches) go(1); schedule(); }, 4000);
     }
     if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { inView = es[0].isIntersecting; }, { threshold: 0.3 }).observe(list);
     list.addEventListener('mouseenter', function () { paused = true; });
