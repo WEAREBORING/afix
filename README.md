@@ -7,6 +7,7 @@ De eigen CSS en JavaScript van de Webflow-site van Afix. Webflow laadt ze via js
 | `site.css` | vloeiende root-fontgrootte, rich text, focus, en verder alleen wat Webflow niet zelf kan | site-head, als `<link>` |
 | `site.js` | de kern: GSAP, Lenis, nav, formulieren, verbergen voor de intro, en de lader van de modules | site-footer, als `<script type="module">` |
 | `modules/*.js` | één bestand per onderwerp (`data-a-*`), laadt alleen als zijn attribuut of class op de pagina staat | niet: `site.js` laadt ze zelf, van dezelfde tag |
+| `modules/overgang.js` | paginaovergangen met Barba (Osmo Cross Fade), laadt op elke pagina met `page-wrapper` | niet: `site.js` laadt hem na de eerste pagina |
 | `test/index.html` | lokale testpagina voor alle modules, plus een opruimcontrole | niet |
 
 De repository is publiek: zet er nooit sleutels, tokens of interne documentatie in.
@@ -43,6 +44,17 @@ Opwarmen:
 tag=vX.Y.Z; for f in site.min.js site.min.css $(cd modules && ls *.js | sed 's/\.js$/.min.js/; s/^/modules\//'); do curl -s -o /dev/null -w "%{http_code} $f\n" "https://cdn.jsdelivr.net/gh/WEAREBORING/afix@$tag/$f"; done
 ```
 
+## Paginaovergangen
+
+`modules/overgang.js` laadt Barba (`@barba/core`, vaste versie) als externe code. Er is geen Webflow-wijziging voor nodig: `body` is de wrapper en `.page-wrapper` de container, dus een nieuwe pagina doet vanzelf mee. Laadt Barba niet, of gaat er iets mis, dan laadt de link gewoon de pagina.
+
+- **De nav staat buiten de container.** `overgang.js` zet hem bij de start in `body`. De footer gaat mee met de pagina, want die verschilt per pagina.
+- **Volgorde van een overgang:** de nieuwe html ophalen, head en nav bijwerken, `load(container)` verbergt wat binnenkomt en laadt de modules, de overvloeier, en zodra de oude pagina weg is `stop()` en de teruggegeven `run()`, terwijl de nieuwe nog opkomt. Een module die meet, meet dus altijd in de echte stand.
+- **`window.load` komt na een overgang niet.** Gebruik `a.loaded(fn)`: dat vuurt bij het laden, en na een overgang als de foto's in beeld er zijn.
+- **Formulieren:** `webflow.js` leest de Turnstile-sleutel maar één keer. `overgang.js` start daarom `Webflow.require('forms').ready()` opnieuw en zet de Turnstile-widget zelf in het formulier.
+- **Geen overgang op een link:** Barba slaat `target="_blank"`, `download`, andere domeinen en ctrl-klik al over. Zet `data-barba-prevent` op een link om hem over te slaan.
+- **Google Tag Manager** staat nu niet op de site. Komt die erbij, dan heeft elke overgang een eigen paginaweergave nodig (`dataLayer.push` in `land`).
+
 ## Een nieuwe module
 
 1. Maak `modules/<naam>.js` met dit patroon:
@@ -71,6 +83,7 @@ Regels voor een module:
 - Zoek binnen `container`, niet in `document`. `a.each(sel, fn)` doet dat al.
 - Listeners met `a.listen(target, type, fn, options)`, timers met `a.wait`, `requestAnimationFrame` met `a.raf`, observers met `a.watch(new IntersectionObserver(...))`, GSAP met `a.withGsap`. Dan ruimt `a.clean` ze op.
 - Wat de module aan de DOM toevoegt of vervangt, en `gsap.ticker.add`, maak je ongedaan met `a.undo(fn)`.
+- Na een overgang komt `window.load` niet: gebruik `a.loaded(fn)`.
 - Niets importeren uit `site.js` of een andere module: jsDelivr laat paden in `import` staan, dus `site.min.js` plus `import '../site.js'` draait de kern twee keer. Gedeeld gaat via `a` (`reduce`, `touchDevice`, `clamp`, `num`, `withBlur`, `jumpTo`, `onceInView`, `lenis`).
 - Wat in de html moet kloppen voordat webflow.js start of de pagina in beeld komt, hoort in `prepare` in `site.js`, niet in een module: een module laadt later.
 

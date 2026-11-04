@@ -902,7 +902,7 @@
   // Elke module laadt, en na opruimen blijft er niets lopen en staat de DOM weer zoals hij was. Daarna nog een keer starten en
   // opruimen, nu met een oog op de timers
   async function cleanupChecks() {
-    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter'];
+    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'overgang'];
     var loaded = await Promise.all(names.map(function (n) { return import('../modules/' + n + '.js'); }));
     checks['opruimen: elke module exporteert init'] = loaded.every(function (m) { return typeof m.init === 'function'; });
     function leftovers(label) {

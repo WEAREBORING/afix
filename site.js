@@ -1,4 +1,4 @@
-/* Afix site.js v0.83: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.84: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -28,6 +28,7 @@ if (!reduce.matches) withGsap(function (gsap) {
   document.head.appendChild(s);
 });
 // Naar een scrollpositie springen, ook als Lenis loopt (anders zet Lenis de oude positie terug)
+var resetNav = function () {};
 function jumpTo(y) { if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); }
 
 /* Wat in de html moet kloppen voordat de pagina of webflow.js het gebruikt, dus niet in een module:
@@ -71,7 +72,7 @@ each('[data-a-nav]', function (nav) {
   var drops = [].slice.call(nav.querySelectorAll('[data-a-dropdown]'));
   var navToggle = nav.querySelector('[data-a-nav-toggle]');
   var menu = nav.querySelector('[data-a-nav-menu]');
-  var gsap = null;
+  var gsap = null, tuckNav = null;
   if (drops.length) withGsap(function (g) { gsap = g; });
   function toggleOf(dd) { return dd.querySelector('[data-a-dropdown-toggle]'); }
   function isOpen(dd) { var t = toggleOf(dd); return !!t && t.getAttribute('aria-expanded') === 'true'; }
@@ -116,6 +117,7 @@ each('[data-a-nav]', function (nav) {
       tucked = on;
       g.to(nav, { y: on ? -bar.offsetHeight : 0, duration: reduce.matches ? 0 : 0.45, ease: 'power4.out', overwrite: true, onComplete: on ? null : function () { g.set(nav, { clearProps: 'transform' }); } });
     }
+    tuckNav = tuck;
     window.addEventListener('scroll', function () {
       var y = window.scrollY;
       if (y < 40) tuck(false);
@@ -131,6 +133,8 @@ each('[data-a-nav]', function (nav) {
     else if (navToggle && navToggle.getAttribute('aria-expanded') === 'true') { setMenu(false); navToggle.focus(); }
   });
   document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { closeDrops(); setMenu(false); } });
+  // Bij een paginaovergang: menu's dicht en de topbalk terug
+  resetNav = function () { closeDrops(); setMenu(false); if (tuckNav) tuckNav(false); };
 });
 
 /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het
@@ -212,6 +216,8 @@ function scope(root) {
   };
   a.raf = function (fn) { return requestAnimationFrame(function (t) { if (!dead) fn(t); }); };
   a.undo = function (fn) { undos.push(fn); };
+  // Bij het laden van de pagina, en na een paginaovergang als de foto's in beeld er zijn (dan komt er geen load-event)
+  a.loaded = function (fn) { a.listen(window, 'load', fn); a.listen(window, 'afix:load', fn); };
   a.watch = function (observer) { undos.push(function () { observer.disconnect(); }); return observer; };
   a.withGsap = function (fn) {
     withGsap(function (gsap) {
@@ -246,9 +252,9 @@ function scope(root) {
 }
 
 var cleaners = [];
-/* De pagina starten: root is document, of later de nieuwe pagina. Eerst alles laden en dan in volgorde starten, in één keer. */
-export function start(root) {
-  root = root || document;
+/* De pagina klaarzetten: root is document, of de nieuwe pagina bij een overgang. Verbergt wat binnenkomt en laadt de modules;
+   de teruggegeven functie start ze, in volgorde en in één keer. */
+function load(root) {
   prepare(root);
   var hidden = reduce.matches ? [] : [].slice.call(root.querySelectorAll(hideFirst));
   hidden.forEach(function (el) { el.style.opacity = '0'; });
@@ -261,18 +267,26 @@ export function start(root) {
     if (typeof m[0] === 'function') return { init: m[0] };
     return import(dir + m[0] + ext).catch(function (e) { console.error('Afix: module ' + m[0] + ' niet geladen', e); });
   }).concat(gsapReady)).then(function (loaded) {
-    clearTimeout(fallback);
-    show();
-    wanted.forEach(function (m, i) {
-      if (!loaded[i]) return;
-      // Een fout in één module mag de andere niet stoppen
-      try { cleaners.push(loaded[i].init(root, scope(root))); } catch (e) { console.error('Afix: module ' + m[0] + ' fout', e); }
-    });
+    return function () {
+      clearTimeout(fallback);
+      show();
+      wanted.forEach(function (m, i) {
+        if (!loaded[i]) return;
+        // Een fout in één module mag de andere niet stoppen
+        try { cleaners.push(loaded[i].init(root, scope(root))); } catch (e) { console.error('Afix: module ' + m[0] + ' fout', e); }
+      });
+    };
   });
 }
+export function start(root) { return load(root || document).then(function (run) { run(); }); }
 /* Alles van de huidige pagina opruimen */
 export function stop() {
   cleaners.forEach(function (clean) { clean(); });
   cleaners = [];
 }
 export var ready = start();
+
+// Paginaovergangen: pas na de eerste pagina, en alleen op de echte site. Lukt het niet, dan werken de links gewoon
+if (document.querySelector('.page-wrapper')) ready.then(function () { return import(dir + 'overgang' + ext); }).then(function (m) {
+  m.init({ load: load, stop: stop, jumpTo: jumpTo, resetNav: function () { resetNav(); }, reduce: reduce, withGsap: withGsap, get lenis() { return lenis; } });
+}).catch(function (e) { console.error('Afix: overgangen niet geladen', e); });

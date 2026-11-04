@@ -44,7 +44,7 @@ export function init(container, a) {
       listen(window, 'scroll', function () { if (!ticking) { ticking = true; raf(update); } }, { passive: true });
       function refresh() { size(); drawn = -1; update(); }
       listen(window, 'resize', refresh);
-      listen(window, 'load', refresh);
+      a.loaded(refresh);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
       refresh();
     });
@@ -121,7 +121,7 @@ export function init(container, a) {
       listen(window, 'scroll', function () { if (!ticking) { ticking = true; raf(update); } }, { passive: true });
       function refresh() { size(); shown = ''; update(); }
       listen(window, 'resize', function () { if (!touch.matches || window.innerWidth !== width) refresh(); });
-      listen(window, 'load', refresh);
+      a.loaded(refresh);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
       refresh();
     });
@@ -168,7 +168,7 @@ export function init(container, a) {
       listen(window, 'scroll', function () { if (!ticking) { ticking = true; raf(update); } }, { passive: true });
       function refresh() { size(); drawn = -1; update(); }
       listen(window, 'resize', refresh);
-      listen(window, 'load', refresh);
+      a.loaded(refresh);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
       refresh();
     });

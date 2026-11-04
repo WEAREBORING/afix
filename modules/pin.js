@@ -106,7 +106,7 @@ export function init(container, a) {
         clearTimeout(timer);
         timer = wait(measure, 150);
       });
-      listen(window, 'load', measure);
+      a.loaded(measure);
       listen(row, 'focusin', function (e) {
         if (!m) return;
         var r = e.target.getBoundingClientRect(), rr = row.getBoundingClientRect();
