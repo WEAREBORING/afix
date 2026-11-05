@@ -1,4 +1,4 @@
-/* Afix site.js v0.89: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.90: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -151,10 +151,10 @@ function withGsap(fn) {
   document.head.appendChild(s);
 }
 
-/* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews en de kop en kaarten van Kennis en Gerelateerd en de tekst, het formulier en de foto op contact komen een keer
+/* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews, de kop en kaarten van Kennis en Gerelateerd, de tekst, het formulier en de foto op contact, en de filters op /werk en de blokken op een case komen een keer
    binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
    fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
-var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media';
+var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media, .werk-filter, .werk-detail_block, .werk-detail_quote-group';
 function initArrivals(root, a) {
   if (!reduce.matches) a.withGsap(function (gsap) {
     a.each(arrivals, function (el) {
@@ -169,7 +169,7 @@ function initArrivals(root, a) {
 }
 
 /* Modules: elk bestand staat in modules/ en exporteert init(container, a). De tabel staat in de volgorde waarin ze starten;
-   die telt: de gele lijn na data-a-pin, de hover op de cases na de kopieën van de rij, data-a-filter na data-a-row.
+   die telt: de gele lijn na data-a-pin, de hover op de cases na de kopieën van de rij, data-a-filter na data-a-row, data-a-werk-nav voor data-a-subnav.
    Een nieuwe module: een regel erbij met de naam en het attribuut (zie de README). */
 var modules = [
   ['wacht', 'button[data-wait]'],
@@ -185,6 +185,7 @@ var modules = [
   ['carousel', '[data-a-carousel], [data-a-case]'],
   ['kaarten', '[data-a-expertise], [data-a-card], [data-a-hover]'],
   ['detail', '[data-a-detail], [data-a-toc], [data-a-share]'],
+  ['werk', '[data-a-werk-filter], [data-a-werk-nav]'],
   ['kennis-hero', '[data-a-subnav], [data-a-page-hero]'],
   ['rij', '[data-a-row]'],
   ['filter', '[data-a-filter], [data-a-filter-list]']
@@ -192,7 +193,7 @@ var modules = [
 // Wat binnenkomt staat meteen verborgen, nog voor de modules en GSAP er zijn; start() haalt dit weg vlak voordat de modules het overnemen
 var hideFirst = arrivals + ', [data-a-hero] .hero-home_heading .tag, [data-a-hero] h1 > span, [data-a-hero] .award, [data-a-hero] .hero-home_cards, ' +
   '[data-a-page-hero] .tag, [data-a-page-hero] h1 span, [data-a-page-hero] [data-a-subnav]:not([data-a-kept]), [data-a-detail] .kennis-detail_header > *, ' +
-  '[data-a-detail] .kennis-detail_intro, [data-a-detail] .kennis-detail_image, [data-a-filter-list] > *';
+  '[data-a-detail] .kennis-detail_intro, [data-a-detail] .kennis-detail_image, [data-a-filter-list] > *, [data-a-werk-nav]';
 // Lokaal de gewone bestanden, op jsDelivr de .min-bestanden (die maakt jsDelivr pas bij het eerste verzoek: warm ze op)
 var dir = new URL('modules/', import.meta.url).href, ext = /\.min\.js/.test(import.meta.url) ? '.min.js' : '.js';
 
