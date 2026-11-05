@@ -112,8 +112,6 @@ export function init(container, a) {
       queued = false;
       var now = 0;
       blocks.forEach(function (block, i) { if (block.getBoundingClientRect().top <= innerHeight * 0.3) now = i; });
-      // Het laatste blok haalt de lijn niet altijd: onderaan de inhoud is het de laatste link
-      if (blocks[blocks.length - 1].getBoundingClientRect().bottom <= innerHeight * 0.75) now = blocks.length - 1;
       if (now === at) return;
       links[at].classList.remove('w--current');
       links[now].classList.add('w--current');

@@ -1,4 +1,4 @@
-/* Afix site.js v0.90: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.91: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
