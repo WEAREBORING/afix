@@ -108,10 +108,11 @@ export function init(container, a) {
       var pill = nav.querySelector('.kennis_tab-pill'), link = links[at];
       if (gsap && pill) gsap.to(pill, { x: link.offsetLeft, width: link.offsetWidth, duration: reduce.matches ? 0 : t, ease: 'power3.out', overwrite: true });
     }
+    function space() { return parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0; }
     function update() {
       queued = false;
-      var now = 0;
-      blocks.forEach(function (block, i) { if (block.getBoundingClientRect().top <= innerHeight * 0.3) now = i; });
+      var now = 0, line = space() + 96; // Een klik zet een blok 32 onder de nav; 64 speling, want een kort blok laat het volgende al bijna op die plek staan
+      blocks.forEach(function (block, i) { if (block.getBoundingClientRect().top <= line) now = i; });
       if (now === at) return;
       links[at].classList.remove('w--current');
       links[now].classList.add('w--current');
@@ -125,8 +126,7 @@ export function init(container, a) {
         e.stopPropagation();
         history.replaceState(null, '', link.hash);
         // Zelf scrollen naar een getal: Lenis telt bij een element de scroll-padding van de nav erbij op
-        var space = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-        var y = i ? blocks[i].getBoundingClientRect().top + window.scrollY - space - 32 : 0;
+        var y = i ? blocks[i].getBoundingClientRect().top + window.scrollY - space() - 32 : 0;
         if (a.lenis) a.lenis.scrollTo(y); else window.scrollTo(0, y);
       });
     });
