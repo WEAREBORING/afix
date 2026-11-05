@@ -1,6 +1,6 @@
 /* Afix modules/werk.js: data-a-werk-filter en data-a-werk-nav: filters en Meer laden op /werk, ankerbalk op een case. Geladen door site.js; init(container, a) start de module, de teruggegeven functie ruimt hem op. */
 export function init(container, a) {
-  var each = a.each, reduce = a.reduce, listen = a.listen, raf = a.raf, withGsap = a.withGsap, num = a.num, undo = a.undo;
+  var each = a.each, reduce = a.reduce, listen = a.listen, raf = a.raf, wait = a.wait, withGsap = a.withGsap, num = a.num, undo = a.undo;
 
   /* data-a-werk-filter (Section - Hero Werk): drie keuzes op de kaarten in data-a-werk-list (Section - Werklijst). De keuzes
      komen uit de kaarten: uitdaging en sector uit de attributen op elke kaart, expertise uit de labels, dus er staat nooit een
@@ -100,39 +100,65 @@ export function init(container, a) {
       return false;
     });
     if (links.length < 2) { nav.style.display = 'none'; undo(function () { nav.style.display = ''; }); return; }
-    var blocks = links.map(function (link, i) { return i ? container.querySelector(link.hash) : nav; }), at = 0, queued = false, gsap = null;
-    links.forEach(function (link) { link.style.backgroundColor = 'transparent'; });
+    var blocks = links.map(function (link, i) { return i ? container.querySelector(link.hash) : nav; });
+    var at = 0, queued = false, locked = null, gsap = null, mouse = window.matchMedia('(hover: hover)');
+    function look(el) { var cs = getComputedStyle(el); return { color: cs.color, opacity: cs.opacity }; }
+    // Zoals de tabs (tabs.js): kleur en dekking staan inline, anders springen ze om met de class en lopen ze niet met de pil mee
+    var off = look(links[1]);
     links[0].classList.add('w--current');
-    undo(function () { links[at].classList.remove('w--current'); links.forEach(function (link) { link.style.backgroundColor = ''; }); });
+    var on = look(links[0]);
+    links.forEach(function (link, i) { link.style.backgroundColor = 'transparent'; Object.assign(link.style, i ? off : on); });
+    undo(function () { links[at].classList.remove('w--current'); links.forEach(function (link) { link.style.backgroundColor = link.style.color = link.style.opacity = ''; }); });
+    function time(t) { return reduce.matches ? 0 : t; }
     function place(t) {
       var pill = nav.querySelector('.kennis_tab-pill'), link = links[at];
-      if (gsap && pill) gsap.to(pill, { x: link.offsetLeft, width: link.offsetWidth, duration: reduce.matches ? 0 : t, ease: 'power3.out', overwrite: true });
+      if (gsap && pill) gsap.to(pill, { x: link.offsetLeft, width: link.offsetWidth, duration: time(t), ease: 'power3.out', overwrite: true });
+    }
+    function select(i) {
+      if (i === at || !gsap) return;
+      links[at].classList.remove('w--current');
+      links[i].classList.add('w--current');
+      at = i;
+      links.forEach(function (link, n) { gsap.to(link, Object.assign({ duration: time(0.3), ease: 'power2.out', overwrite: true }, n === i ? on : off)); });
+      place(0.45);
+      // Past de balk niet (telefoon), dan schuift hij mee zodat de actieve link in het midden staat
+      var left = links[i].offsetLeft + links[i].offsetWidth / 2 - nav.clientWidth / 2;
+      if (nav.scrollWidth > nav.clientWidth) gsap.to(nav, { scrollLeft: a.clamp(left, 0, nav.scrollWidth - nav.clientWidth), duration: time(0.45), ease: 'power3.out', overwrite: 'auto' });
     }
     function space() { return parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0; }
     function update() {
       queued = false;
+      if (locked) return;
       var now = 0, line = space() + 96; // Een klik zet een blok 32 onder de nav; 64 speling, want een kort blok laat het volgende al bijna op die plek staan
       blocks.forEach(function (block, i) { if (block.getBoundingClientRect().top <= line) now = i; });
-      if (now === at) return;
-      links[at].classList.remove('w--current');
-      links[now].classList.add('w--current');
-      at = now;
-      place(0.45);
+      select(now);
     }
     function queue() { if (!queued) { queued = true; raf(update); } }
+    function release() { clearTimeout(locked); locked = null; queue(); }
     links.forEach(function (link, i) {
       listen(link, 'click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         history.replaceState(null, '', link.hash);
+        // De pil gaat meteen naar de klik en stopt niet bij de blokken waar de scroll langskomt
+        select(i);
+        clearTimeout(locked);
+        locked = wait(release, 2000);
         // Zelf scrollen naar een getal: Lenis telt bij een element de scroll-padding van de nav erbij op
         var y = i ? blocks[i].getBoundingClientRect().top + window.scrollY - space() - 32 : 0;
-        if (a.lenis) a.lenis.scrollTo(y); else window.scrollTo(0, y);
+        if (a.lenis) a.lenis.scrollTo(y, { onComplete: release }); else { window.scrollTo(0, y); release(); }
       });
     });
     withGsap(function (g) {
       gsap = g;
       if (!reduce.matches) gsap.fromTo(nav, { opacity: 0 }, { opacity: 1, duration: 1.1, delay: 0.3, ease: 'power3.out', clearProps: 'opacity' });
+    });
+    // Na kennis-hero.js, die de hover alleen op de links zonder w--current bij de start zet en geen wissel kent: dit wint
+    raf(function () {
+      links.forEach(function (link, i) {
+        listen(link, 'mouseenter', function () { if (gsap && mouse.matches && i !== at) gsap.to(link, { opacity: 1, duration: time(0.25), ease: 'power2.out', overwrite: true }); });
+        listen(link, 'mouseleave', function () { if (gsap) gsap.to(link, Object.assign({ duration: time(0.25), ease: 'power2.out', overwrite: true }, i === at ? on : off)); });
+      });
     });
     listen(window, 'scroll', queue, { passive: true });
     // Na kennis-hero.js, die de pil bij deze momenten terugzet op de eerste link
