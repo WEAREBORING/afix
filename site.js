@@ -1,4 +1,4 @@
-/* Afix site.js v0.94: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.95: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,6 +30,11 @@ if (!reduce.matches) withGsap(function (gsap) {
 // Naar een scrollpositie springen, ook als Lenis loopt (anders zet Lenis de oude positie terug)
 var resetNav = function () {};
 function jumpTo(y) { if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); }
+// Zacht naar een scrollpositie na een klik op een anker. Eigen duur en curve (power3.inOut van GSAP): zonder rekent Lenis met lerp en dat begint op volle snelheid
+function glideTo(y, done) {
+  if (!lenis) { window.scrollTo(0, y); if (done) done(); return; }
+  lenis.scrollTo(y, { duration: clamp(0.7 + Math.abs(y - window.scrollY) / 2500, 0.8, 1.4), easing: function (t) { return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(2 - 2 * t, 4) / 2; }, onComplete: done });
+}
 
 /* Wat in de html moet kloppen voordat de pagina of webflow.js het gebruikt, dus niet in een module:
    - data-a-year: het huidige jaar (bijvoorbeeld het copyright in de footer).
@@ -199,7 +204,7 @@ var dir = new URL('modules/', import.meta.url).href, ext = /\.min\.js/.test(impo
 
 /* Wat een module krijgt: de gedeelde hulpjes plus een eigen opruimlijst. Listeners, tweens, timers en observers die via
    a lopen ruimt a.clean op; wat de module verder aan de DOM toevoegt, geeft hij door met a.undo(fn). */
-var shared = { reduce: reduce, touchDevice: touchDevice, clamp: clamp, num: num, withBlur: withBlur, jumpTo: jumpTo, get lenis() { return lenis; } };
+var shared = { reduce: reduce, touchDevice: touchDevice, clamp: clamp, num: num, withBlur: withBlur, jumpTo: jumpTo, glideTo: glideTo, get lenis() { return lenis; } };
 function scope(root) {
   var a = Object.create(shared), ac = new AbortController(), undos = [], timers = new Set(), live = [], dead = false;
   function track(t) {

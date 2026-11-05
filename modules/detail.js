@@ -24,7 +24,7 @@ export function init(container, a) {
         e.stopPropagation();
         history.replaceState(null, '', link.hash);
         var y = head.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(block).top) || 0);
-        if (a.lenis) a.lenis.scrollTo(y); else window.scrollTo(0, y);
+        a.glideTo(y);
       });
       list.appendChild(link);
       return link;

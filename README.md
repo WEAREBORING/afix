@@ -86,7 +86,8 @@ Regels voor een module:
 - Listeners met `a.listen(target, type, fn, options)`, timers met `a.wait`, `requestAnimationFrame` met `a.raf`, observers met `a.watch(new IntersectionObserver(...))`, GSAP met `a.withGsap`. Dan ruimt `a.clean` ze op.
 - Wat de module aan de DOM toevoegt of vervangt, en `gsap.ticker.add`, maak je ongedaan met `a.undo(fn)`.
 - Na een overgang komt `window.load` niet: gebruik `a.loaded(fn)`.
-- Niets importeren uit `site.js` of een andere module: jsDelivr laat paden in `import` staan, dus `site.min.js` plus `import '../site.js'` draait de kern twee keer. Gedeeld gaat via `a` (`reduce`, `touchDevice`, `clamp`, `num`, `withBlur`, `jumpTo`, `onceInView`, `lenis`).
+- Niets importeren uit `site.js` of een andere module: jsDelivr laat paden in `import` staan, dus `site.min.js` plus `import '../site.js'` draait de kern twee keer. Gedeeld gaat via `a` (`reduce`, `touchDevice`, `clamp`, `num`, `withBlur`, `jumpTo`, `glideTo`, `onceInView`, `lenis`).
+- Scrollen na een klik op een anker: `a.glideTo(y, done)`. `a.lenis.scrollTo(y)` zonder duur begint op volle snelheid.
 - Wat in de html moet kloppen voordat webflow.js start of de pagina in beeld komt, hoort in `prepare` in `site.js`, niet in een module: een module laadt later.
 
 ## Pagina-code

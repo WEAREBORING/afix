@@ -110,7 +110,6 @@ export function init(container, a) {
     links.forEach(function (link, i) { link.style.backgroundColor = 'transparent'; Object.assign(link.style, i ? off : on); });
     undo(function () { links[at].classList.remove('w--current'); links.forEach(function (link) { link.style.backgroundColor = link.style.color = link.style.opacity = ''; }); });
     function time(t) { return reduce.matches ? 0 : t; }
-    function inOut(t) { return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(2 - 2 * t, 4) / 2; } // power3.inOut van GSAP
     function place(t) {
       var pill = nav.querySelector('.kennis_tab-pill'), link = links[at];
       if (gsap && pill) gsap.to(pill, { x: link.offsetLeft, width: link.offsetWidth, duration: time(t), ease: 'power3.out', overwrite: true });
@@ -147,9 +146,7 @@ export function init(container, a) {
         locked = wait(release, 2000);
         // Zelf scrollen naar een getal: Lenis telt bij een element de scroll-padding van de nav erbij op
         var y = i ? blocks[i].getBoundingClientRect().top + window.scrollY - space() - 32 : 0;
-        // Met een eigen duur en curve: zonder rekent Lenis met lerp en dat begint op volle snelheid
-        if (a.lenis) a.lenis.scrollTo(y, { duration: a.clamp(0.7 + Math.abs(y - window.scrollY) / 2500, 0.8, 1.4), easing: inOut, onComplete: release });
-        else { window.scrollTo(0, y); release(); }
+        a.glideTo(y, release);
       });
     });
     withGsap(function (g) {
