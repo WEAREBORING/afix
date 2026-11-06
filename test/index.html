@@ -467,20 +467,24 @@
   }
 
   function fadeChecks(done) {
-    // Vervagen bij wegscrollen: nog zichtbaar als de kop van de volgende sectie iets onder de helft staat, weg op de helft
+    // Vervagen bij wegscrollen: een vaste overgang, geen scrub. Weg als de kop van de volgende sectie op de helft staat, terug bovenaan
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
     var head = $('#pin-kop'), comp = $('.hero-home_component');
     function headTo(y, then) {
       var r = head.getBoundingClientRect();
       window.scrollTo(0, window.scrollY + r.top + r.height / 2 - y);
-      setTimeout(then, 300);
+      setTimeout(then, 900);
     }
-    headTo(innerHeight * 0.6, function () {
-      var mid = parseFloat(getComputedStyle(comp).opacity);
-      headTo(innerHeight * 0.5, function () {
-        checks['hero: vervaagt tot de kop eronder op de helft staat'] = mid > 0 && mid < 1 && parseFloat(getComputedStyle(comp).opacity) < 0.01;
-        done();
-      });
+    headTo(innerHeight * 0.5, function () {
+      var weg = parseFloat(getComputedStyle(comp).opacity);
+      window.scrollTo(0, 0);
+      setTimeout(function () {
+        var terug = parseFloat(getComputedStyle(comp).opacity);
+        headTo(innerHeight * 0.5, function () {
+          checks['hero: vervaagt in een vaste overgang en komt terug bovenaan'] = weg < 0.01 && terug === 1;
+          done();
+        });
+      }, 900);
     });
   }
 

@@ -57,9 +57,9 @@ export function init(container, a) {
 
   /* data-a-hero (Section - Hero Home): bij het laden komen de eyebrow, de kopregels (de spans in de h1), de awards en de
      balk met uitdagingen na elkaar binnen, uit een waas (blur, fade en iets omhoog). Bij wegscrollen vervaagt
-     hero-home_component, traag beginnend en zacht uitlopend, en is weg als de kop van de volgende sectie op de helft van
-     het scherm staat, samen met de achtergrondvorm
-     (hero-home_background en het vervolg ervan in Expertises, expertises_background). Hover of toetsenbordfocus op
+     hero-home_component in een vaste overgang van 0,6 seconde, samen met de achtergrondvorm (hero-home_background en het
+     vervolg ervan in Expertises, expertises_background), en bij terugscrollen komt hij weer op. Geen scrub zoals in het
+     prototype (keuze van de gebruiker): zo blijft de hero nooit half doorzichtig staan. Hover of toetsenbordfocus op
      een uitdaging (data-a-challenge, alleen desktop met muis): de kaart groeit, wordt signaalgeel (surface/accent) met
      tekst in action/contrast, het nummer gaat weg en de titel schuift naar boven, hero-card_detail komt onderin in beeld,
      en de twee foto's van die kaart komen van opzij binnen, kantelen naar hun stand uit de class en lopen licht mee met de
@@ -109,20 +109,21 @@ export function init(container, a) {
       // Vervagen bij wegscrollen: de inhoud en de achtergrondvorm, ook het deel dat doorloopt in de volgende sectie
       // (expertises_background), want dat is dezelfde vorm
       var fading = [comp].concat([].slice.call(container.querySelectorAll('.hero-home_background, .expertises_background')));
-      var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false, faded = -1;
+      var top0 =Math.min(hero.getBoundingClientRect().top + window.scrollY, window.innerHeight), ticking = false, gone = null;
       if (!reduce.matches) gsap.set(fading, { willChange: 'opacity' });
       var head = hero.nextElementSibling && hero.nextElementSibling.querySelector('h1, h2, h3');
       function fade() {
         ticking = false;
         if (reduce.matches) return gsap.set(fading, { clearProps: 'opacity' });
-        // Klaar na 70% van de herohoogte, en traag beginnend: de eerste meters blijft hij bijna staan
-        // Afgelegd / (afgelegd + wat de kop nog moet tot de helft van het scherm)
+        // Afgelegd / (afgelegd + wat de kop nog moet tot de helft van het scherm). Weg op de helft daarvan, terug iets eerder:
+        // met een enkele grens knippert hij als je daar stilstaat
         var done = top0 - hero.getBoundingClientRect().top, r = head && head.getBoundingClientRect();
         var left = r ? r.top + r.height / 2 - window.innerHeight / 2 : 0.7 * hero.offsetHeight - done;
-        var p = left > 0 ? clamp(done / (done + left), 0, 1) : 1, o = +(1 - p * p * (3 - 2 * p)).toFixed(3);
-        if (o === faded) return;
-        faded = o;
-        gsap.set(fading, { opacity: o });
+        var p = left > 0 ? clamp(done / (done + left), 0, 1) : 1, out = p >= (gone ? 0.4 : 0.5), first = gone === null;
+        if (out === gone) return;
+        gone = out;
+        // Laadt de pagina al voorbij de grens, dan staat hij meteen goed
+        gsap.to(fading, { opacity: out ? 0 : 1, duration: first ? 0 : 0.6, ease: 'sine.inOut', overwrite: true });
       }
       listen(window, 'scroll', function () { if (!ticking) { ticking = true; raf(fade); } }, { passive: true });
       fade();
