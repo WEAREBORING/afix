@@ -20,9 +20,6 @@ export function init(container, a) {
     function state() {
       setButton(prev, list.scrollLeft > 1);
       setButton(next, list.scrollLeft < end() - 1);
-      // Voor de fade aan de rand (CSS - Team): 0 tot 1, en alleen aan de kant waar nog kaarten staan
-      list.style.setProperty('--rij-links', clamp(list.scrollLeft / 80, 0, 1));
-      list.style.setProperty('--rij-rechts', clamp((end() - list.scrollLeft) / 80, 0, 1));
       if (!drag) list.style.cursor = mouse.matches && end() > 1 ? 'grab' : '';
     }
     function stepSize() {
