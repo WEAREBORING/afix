@@ -1,4 +1,4 @@
-/* Afix site.js v0.95: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.96: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -156,10 +156,10 @@ function withGsap(fn) {
   document.head.appendChild(s);
 }
 
-/* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews, de kop en kaarten van Kennis en Gerelateerd, de tekst, het formulier en de foto op contact, en de filters op /werk en de blokken op een case komen een keer
+/* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews, de kop en kaarten van Kennis en Gerelateerd, de tekst, het formulier en de foto op contact, en de filters op /werk, de blokken op een case en de teamlijst en de blokken op een teamlid komen een keer
    binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
    fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
-var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media, .werk-filter, .werk-detail_block, .werk-detail_quote-group';
+var arrivals = '.werk_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media, .werk-filter, .werk-detail_block, .werk-detail_quote-group, .team-lijst_list, .team-detail_person, .team-detail_intro, .team-detail_blok';
 function initArrivals(root, a) {
   if (!reduce.matches) a.withGsap(function (gsap) {
     a.each(arrivals, function (el) {
@@ -174,7 +174,7 @@ function initArrivals(root, a) {
 }
 
 /* Modules: elk bestand staat in modules/ en exporteert init(container, a). De tabel staat in de volgorde waarin ze starten;
-   die telt: de gele lijn na data-a-pin, de hover op de cases na de kopieën van de rij, data-a-filter na data-a-row, data-a-werk-nav voor data-a-subnav.
+   die telt: de gele lijn na data-a-pin, de hover op de cases na de kopieën van de rij, data-a-filter na data-a-row, data-a-werk-nav en data-a-team-filter voor data-a-subnav.
    Een nieuwe module: een regel erbij met de naam en het attribuut (zie de README). */
 var modules = [
   ['wacht', 'button[data-wait]'],
@@ -191,6 +191,7 @@ var modules = [
   ['kaarten', '[data-a-expertise], [data-a-card], [data-a-hover]'],
   ['detail', '[data-a-detail], [data-a-toc], [data-a-share]'],
   ['werk', '[data-a-werk-filter], [data-a-werk-nav]'],
+  ['teamlijst', '[data-a-team-filter], [data-a-lid], [data-a-team-blok]'],
   ['kennis-hero', '[data-a-subnav], [data-a-page-hero]'],
   ['rij', '[data-a-row]'],
   ['filter', '[data-a-filter], [data-a-filter-list]']

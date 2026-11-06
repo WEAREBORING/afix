@@ -903,7 +903,7 @@
   // Elke module laadt, en na opruimen blijft er niets lopen en staat de DOM weer zoals hij was. Daarna nog een keer starten en
   // opruimen, nu met een oog op de timers
   async function cleanupChecks() {
-    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'werk', 'overgang'];
+    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'werk', 'teamlijst', 'overgang'];
     var navCurrent = document.querySelector('#kn-nav .w--current'), navPill = document.querySelector('#kn-nav .kennis_tab-pill');
     checks['kennisnavigatie: pil staat op de huidige link'] = !!navPill && Math.abs(gsap.getProperty(navPill, 'x') - navCurrent.offsetLeft) < 1 && Math.abs(navPill.offsetWidth - navCurrent.offsetWidth) < 1 && navCurrent.style.backgroundColor === 'transparent';
     var loaded = await Promise.all(names.map(function (n) { return import('../modules/' + n + '.js'); }));
