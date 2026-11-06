@@ -1,6 +1,7 @@
 /* Afix modules/overgang.js: paginaovergangen met Barba en het Osmo-effect Cross Fade Page Transition (keuze van de gebruiker). Geladen door site.js op elke pagina met een page-wrapper.
-   De oude pagina vervaagt in 0,5 seconde (power1.in), de nieuwe komt tegelijk op in 0,75 seconde (power1.inOut), zoals de resource
-   van Osmo. Een h1 komt 0,3 seconde later omhoog binnen (25%, expo.out, 1 seconde), behalve als de pagina een eigen intro heeft
+   De nieuwe pagina komt in 0,6 seconde (power1.inOut) boven op de oude op, en de oude blijft dekkend staan tot hij bedekt is. Zo is
+   er geen moment dat de lichte body door twee halfdoorzichtige pagina's schijnt, wat de resource van Osmo wel geeft (28% op een
+   donkere hero). Een h1 komt 0,3 seconde later omhoog binnen (25%, expo.out, 1 seconde), behalve als de pagina een eigen intro heeft
    (hero, kennis-hero, detail): dan brengt die de kop binnen, zodat hij niet twee keer komt. Reduced motion wisselt direct.
    Zonder Webflow-wijziging: body is de wrapper en page-wrapper de container, dus elke nieuwe pagina doet vanzelf mee. De nav blijft
    staan (site.js zet hem buiten de container, in body); de footer gaat mee, want die verschilt per pagina.
@@ -10,8 +11,9 @@
    (keepLines). Bij elke overgang naar een kennispagina blijven de randen verborgen tot de intro ze tekent, anders staan ze er
    tijdens het opkomen al helemaal en verspringen ze.
    Tijdens de overgang staat de nieuwe pagina vast bovenin. Daarom verbergt site.js eerst wat binnenkomt (site.load) en starten de
-   modules pas als de oude pagina weg is (run), terwijl de nieuwe nog opkomt: dan kloppen de maten en de scrollpositie. Laadt Barba
+   modules pas als de oude pagina weg is (run): dan kloppen de maten en de scrollpositie. Laadt Barba
    niet, of gaat er iets mis, dan laadt de link gewoon de pagina. */
+var FADE = 0.6;
 var BARBA = 'https://cdn.jsdelivr.net/npm/@barba/core@2.10.3/dist/barba.umd.min.js';
 var TURNSTILE = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 
@@ -87,16 +89,14 @@ export function init(site) {
   function runPageLeaveAnimation(data) {
     var current = data.current.container;
     var tl = gsap.timeline({ onComplete: function () { current.remove(); land(data); } });
-    if (reduce.matches) return tl.set(current, { autoAlpha: 0 });
-    tl.to(current, { autoAlpha: 0, ease: 'power1.in', duration: 0.5 }, 0);
-    return tl;
+    return tl.set(current, { autoAlpha: 0 }, reduce.matches ? 0 : FADE);
   }
   function runPageEnterAnimation(next) {
     var tl = gsap.timeline();
     if (reduce.matches) tl.set(next, { autoAlpha: 1 });
     else {
       tl.add('startEnter', 0);
-      tl.fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1, ease: 'power1.inOut', duration: 0.75, clearProps: 'opacity,visibility' }, 'startEnter');
+      tl.fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1, ease: 'power1.inOut', duration: FADE, clearProps: 'opacity,visibility' }, 'startEnter');
       var title = next.querySelector('h1');
       if (title && !next.querySelector('[data-a-hero], [data-a-page-hero], [data-a-detail]')) {
         tl.fromTo(title, { yPercent: 25, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, ease: 'expo.out', duration: 1, clearProps: 'transform,opacity,visibility' }, '< 0.3');
@@ -131,7 +131,7 @@ export function init(site) {
     });
   }
 
-  /* Een kopie van de randen staat boven de vervagende pagina, zonder vulling, en de staart rijdt naar het einde van het stuk dat
+  /* Een kopie van de randen staat boven de pagina's, zonder vulling, en de staart rijdt naar het einde van het stuk dat
      in beeld is. Was de lijn nog aan het tekenen, dan rijdt zijn kop ook door tot het einde. */
   function keepLines(current) {
     var box = current.querySelector('.hero-kennis_background'), rect = box && box.getBoundingClientRect();
@@ -157,7 +157,7 @@ export function init(site) {
   // De oude pagina is weg: de nieuwe in de gewone stroom en op zijn scrollpositie, en nu pas de modules
   function land(data) {
     var next = data.next.container, lenis = site.lenis;
-    gsap.set(next, { clearProps: 'position,top,left,width' });
+    gsap.set(next, { clearProps: 'position,top,left,width,zIndex,backgroundColor' });
     site.stop();
     stopForms();
     if (lenis) lenis.resize();
@@ -219,7 +219,10 @@ export function init(site) {
         // Bovenin, onder de nav; de oude pagina blijft staan waar hij staat, zodat sticky blijft kloppen
         beforeEnter: function (data) {
           // Even breed als in de gewone stroom: met een zichtbare scrollbalk zou de pagina anders verspringen bij het landen
-          gsap.set(data.next.container, { position: 'fixed', top: nav.getBoundingClientRect().height, left: 0, width: document.documentElement.clientWidth });
+          // Boven alles van de oude pagina, en met een eigen vlak: page-wrapper is doorzichtig, dan zou de oude pagina erdoor te zien zijn
+          var next = data.next.container, vars = { position: 'fixed', top: nav.getBoundingClientRect().height, left: 0, width: document.documentElement.clientWidth, zIndex: 40 };
+          if (getComputedStyle(next).backgroundColor === 'rgba(0, 0, 0, 0)') vars.backgroundColor = getComputedStyle(document.body).backgroundColor;
+          gsap.set(next, vars);
           var fresh = data.next.container.querySelector('[data-a-kept]');
           if (fresh) { keepSubnav(data.current.container.querySelector('[data-a-subnav]'), fresh); keepLines(data.current.container); }
         },
