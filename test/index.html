@@ -467,20 +467,19 @@
   }
 
   function fadeChecks(done) {
-    // Vervagen bij wegscrollen: een vaste overgang, geen scrub. Weg als de kop van de volgende sectie op de helft staat, terug bovenaan
+    // Vervagen bij wegscrollen: een vaste overgang, geen scrub. Weg als de uitdagingen in het bovenste deel van het scherm staan, terug bovenaan
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
-    var head = $('#pin-kop'), comp = $('.hero-home_component');
-    function headTo(y, then) {
-      var r = head.getBoundingClientRect();
-      window.scrollTo(0, window.scrollY + r.top + r.height / 2 - y);
+    var comp = $('.hero-home_component'), bar = $('.hero-home_cards') || comp;
+    function barTo(y, then) {
+      window.scrollTo(0, window.scrollY + bar.getBoundingClientRect().bottom - y);
       setTimeout(then, 900);
     }
-    headTo(innerHeight * 0.5, function () {
+    barTo(innerHeight * 0.3, function () {
       var weg = parseFloat(getComputedStyle(comp).opacity);
       window.scrollTo(0, 0);
       setTimeout(function () {
         var terug = parseFloat(getComputedStyle(comp).opacity);
-        headTo(innerHeight * 0.5, function () {
+        barTo(innerHeight * 0.3, function () {
           checks['hero: vervaagt in een vaste overgang en komt terug bovenaan'] = weg < 0.01 && terug === 1;
           done();
         });
