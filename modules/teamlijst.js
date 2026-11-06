@@ -68,7 +68,8 @@ export function init(container, a) {
   /* data-a-lid (Item - Teamlid): hover op een teamkaart, alleen desktop met muis, en bij toetsenbordfocus op de kaartlink
      (Figma 1030:5914). Het vak wordt signaalgeel (surface/accent), waardoor de donkere lijn erin zichtbaar wordt, en de pijlknop
      komt in beeld. Foto hover en Titel hover uit de CMS vervangen de foto en de functie; zijn ze leeg, dan blijven die staan
-     en zoomt de foto iets in. Na het teruggaan neemt de class het weer over. */
+     en zoomt de foto iets in. Na het teruggaan neemt de class het weer over.
+     Bij de fotowissel gaat de bovenste foto pas weg als de onderste er staat: faden beide tegelijk, dan schijnt het vak door het portret. */
   var leden = container.querySelectorAll('[data-a-lid]');
   if (leden.length) withGsap(function (gsap) {
     var desktop = window.matchMedia('(hover: hover) and (min-width: 992px)');
@@ -89,6 +90,8 @@ export function init(container, a) {
       var rol = card.querySelector('.team-card_rol'), titel = card.querySelector('.team-card_titel-hover'), pijl = card.querySelector('.team-card_pijl');
       if (!vlak || !foto) return;
       var nieuweFoto = filled(fotoHover), nieuweTitel = filled(titel), on = false, rest;
+      // De beginstand alleen vanuit rust: bij snel heen en weer loopt de tween door vanaf waar hij is
+      function enter(el, from, to) { if (!+gsap.getProperty(el, 'opacity')) gsap.set(el, from); gsap.to(el, to); }
       function show() {
         if (on) return;
         on = true;
@@ -96,14 +99,14 @@ export function init(container, a) {
         rest = rest || getComputedStyle(vlak).backgroundColor;
         gsap.to(vlak, { backgroundColor: colorOf(vlak, '--_theme---surface--accent'), duration: 0.3 * t, ease: 'power2.out', overwrite: 'auto' });
         if (nieuweFoto) {
-          gsap.to(foto, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true });
-          gsap.fromTo(fotoHover, { opacity: 0, y: rem(0.75) * t }, { opacity: 1, y: 0, duration: 0.5 * t, ease: 'power3.out', overwrite: true });
+          gsap.to(fotoHover, { opacity: 1, duration: 0.4 * t, ease: 'sine.inOut', overwrite: true });
+          gsap.to(foto, { opacity: 0, duration: 0.2 * t, delay: 0.3 * t, ease: 'none', overwrite: true });
         } else if (t) gsap.to(foto, { scale: 1.03, transformOrigin: '50% 0%', duration: 0.8, ease: 'expo.out', overwrite: true }); // Vanaf de bovenkant: .team-card_media knipt af en boven het hoofd is maar een paar pixels lucht
         if (nieuweTitel) {
           gsap.to(rol, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
-          gsap.fromTo(titel, { opacity: 0, y: rem(0.25) * t }, { opacity: 1, y: 0, duration: 0.35 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+          enter(titel, { y: rem(0.25) * t }, { opacity: 1, y: 0, duration: 0.35 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
         }
-        if (pijl) gsap.fromTo(pijl, { opacity: 0, x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+        if (pijl) enter(pijl, { x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
       }
       function hide() {
         if (!on) return;
@@ -112,8 +115,8 @@ export function init(container, a) {
         function clear(el, props) { return function () { gsap.set(el, { clearProps: props }); }; }
         gsap.to(vlak, { backgroundColor: rest, duration: 0.3 * t, ease: 'power2.out', overwrite: 'auto', onComplete: clear(vlak, 'backgroundColor') });
         if (nieuweFoto) {
-          gsap.to(fotoHover, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: clear(fotoHover, 'opacity,transform') });
-          gsap.to(foto, { opacity: 1, duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(foto, 'opacity') });
+          gsap.to(foto, { opacity: 1, duration: 0.15 * t, ease: 'none', overwrite: true, onComplete: clear(foto, 'opacity') });
+          gsap.to(fotoHover, { opacity: 0, duration: 0.35 * t, delay: 0.1 * t, ease: 'sine.inOut', overwrite: true, onComplete: clear(fotoHover, 'opacity') });
         } else gsap.to(foto, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: clear(foto, 'transform,transformOrigin') });
         if (nieuweTitel) {
           gsap.to(titel, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: clear(titel, 'opacity,transform') });
