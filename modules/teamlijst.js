@@ -98,7 +98,7 @@ export function init(container, a) {
         if (nieuweFoto) {
           gsap.to(foto, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true });
           gsap.fromTo(fotoHover, { opacity: 0, y: rem(0.75) * t }, { opacity: 1, y: 0, duration: 0.5 * t, ease: 'power3.out', overwrite: true });
-        } else if (t) gsap.to(foto, { scale: 1.03, transformOrigin: '50% 100%', duration: 0.8, ease: 'expo.out', overwrite: true });
+        } else if (t) gsap.to(foto, { scale: 1.03, transformOrigin: '50% 0%', duration: 0.8, ease: 'expo.out', overwrite: true }); // Vanaf de bovenkant: .team-card_media knipt af en boven het hoofd is maar een paar pixels lucht
         if (nieuweTitel) {
           gsap.to(rol, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
           gsap.fromTo(titel, { opacity: 0, y: rem(0.25) * t }, { opacity: 1, y: 0, duration: 0.35 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
