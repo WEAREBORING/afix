@@ -19,14 +19,13 @@ export function init(container, a) {
         var t = reduce.matches ? 0 : 1;
         rest = rest || getComputedStyle(link).backgroundColor;
         gsap.to(link, { backgroundColor: getComputedStyle(link).getPropertyValue('--_theme---surface--accent'), duration: 0.35 * t, ease: 'power2.out', overwrite: true });
-        if (arrow) gsap.fromTo(arrow, { opacity: 0, x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power3.out', overwrite: true });
+        if (arrow) gsap.hoverIn(arrow, { x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power3.out', overwrite: true });
       }
       function hide() {
         if (!on) return;
         on = false;
-        var t = reduce.matches ? 0 : 1;
-        gsap.to(link, { backgroundColor: rest, duration: 0.35 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(link, { clearProps: 'backgroundColor' }); } });
-        if (arrow) gsap.to(arrow, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(arrow, { clearProps: 'opacity,transform' }); } });
+        gsap.hoverOut(link, { backgroundColor: rest }, 'backgroundColor');
+        if (arrow) gsap.hoverOut(arrow, { opacity: 0, x: -rem(0.5) }, 'opacity,transform');
       }
       listen(card, 'mouseenter', function () { if (desktop.matches) show(); });
       listen(card, 'mouseleave', hide);
@@ -67,18 +66,17 @@ export function init(container, a) {
         if (labels.length) gsap.to(labels, { backgroundColor: colorOf(card, '--_theme---border--subtle'), duration: 0.3 * t, ease: 'power2.out', overwrite: true });
         if (img && t) gsap.to(img, { scale: 1.03, transformOrigin: '50% 100%', duration: 0.8, ease: 'expo.out', overwrite: true });
         if (date) gsap.to(date, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
-        if (arrow) gsap.fromTo(arrow, { opacity: 0, x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+        if (arrow) gsap.hoverIn(arrow, { x: -rem(0.5) * t }, { opacity: 1, x: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
       }
       function hide() {
         if (!on) return;
         on = false;
-        var t = reduce.matches ? 0 : 1;
-        function clear(el, props) { return function () { gsap.set(el, { clearProps: props }); }; }
-        gsap.to(card, { backgroundColor: rest.card, duration: 0.3 * t, ease: 'power2.out', overwrite: 'auto', onComplete: clear(card, 'backgroundColor') });
-        labels.forEach(function (l, i) { gsap.to(l, { backgroundColor: rest.labels[i], duration: 0.3 * t, ease: 'power2.out', overwrite: true, onComplete: clear(l, 'backgroundColor') }); });
-        if (img) gsap.to(img, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: clear(img, 'transform,transformOrigin') });
-        if (arrow) gsap.to(arrow, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: clear(arrow, 'opacity,transform') });
-        if (date) gsap.to(date, { opacity: 1, duration: 0.3 * t, delay: 0.1 * t, ease: 'power2.out', overwrite: true, onComplete: clear(date, 'opacity') });
+        gsap.hoverOut(card, { backgroundColor: rest.card, overwrite: 'auto' }, 'backgroundColor');
+        labels.forEach(function (l, i) { gsap.hoverOut(l, { backgroundColor: rest.labels[i] }, 'backgroundColor'); });
+        if (img) gsap.hoverOut(img, { scale: 1, duration: 0.6 }, 'transform,transformOrigin');
+        // De datum staat op de plek van de pijl: eerst de pijl weg, dan pas de datum terug
+        if (arrow) gsap.hoverOut(arrow, { opacity: 0, x: -rem(0.5), duration: 0.3 }, 'opacity,transform');
+        if (date) gsap.hoverOut(date, { opacity: 1, duration: 0.3, delay: 0.2 }, 'opacity');
       }
       listen(card, 'mouseenter', function () { if (desktop.matches) show(); });
       listen(card, 'mouseleave', hide);
@@ -89,7 +87,7 @@ export function init(container, a) {
 
   /* data-a-hover: hover-animatie met GSAP, alleen op desktop met muis.
      data-a-hover op het element waar je overheen gaat; kinderen met data-a-hover-x en/of -y (rem, px of %) en/of
-     data-a-hover-scale bewegen mee. Duur in seconden: data-a-hover-duration (standaard 0.6) en -duration-out (0.4).
+     data-a-hover-scale bewegen mee. Duur in seconden: data-a-hover-duration (standaard 0.6) en -duration-out (0.4, zacht in en uit).
      Na het teruggaan neemt de class de stijl weer over (clearProps). */
   var hovers = container.querySelectorAll('[data-a-hover]');
   if (hovers.length) withGsap(function (gsap) {
@@ -122,7 +120,7 @@ export function init(container, a) {
         targets.forEach(function (t) {
           var rest = t._hoverRest;
           if (!rest) return;
-          gsap.to(t, { x: rest.x, y: rest.y, xPercent: rest.xPercent, yPercent: rest.yPercent, scale: rest.scale, duration: num(t, 'data-a-hover-duration-out', 0.4), ease: 'expo.out', overwrite: true,
+          gsap.to(t, { x: rest.x, y: rest.y, xPercent: rest.xPercent, yPercent: rest.yPercent, scale: rest.scale, duration: num(t, 'data-a-hover-duration-out', 0.4), ease: 'sine.inOut', overwrite: true,
             onComplete: function () { gsap.set(t, { clearProps: 'transform' }); t._hoverRest = null; } });
         });
       });

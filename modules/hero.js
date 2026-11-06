@@ -172,8 +172,8 @@ export function init(container, a) {
           // Begint te vervagen zodra de nieuwe foto er dekkend op ligt (0,1 s) en is na 0,35 s weg, zacht in en uit
           gsap.to(img, { opacity: 0, duration: 0.25, delay: 0.1, ease: 'sine.inOut', onComplete: done });
         } else {
-          gsap.to(img, { x: side * rem(1.75), y: rem(0.75), xPercent: 0, yPercent: 0, scale: 0.92, rotation: rot * 0.3, duration: 0.35, ease: 'power3.out', overwrite: true, onComplete: done });
-          gsap.to(img, { opacity: 0, duration: 0.3, ease: 'sine.out' });
+          gsap.to(img, { x: side * rem(1.75), y: rem(0.75), xPercent: 0, yPercent: 0, scale: 0.92, rotation: rot * 0.3, duration: 0.5, ease: 'sine.inOut', overwrite: true, onComplete: done });
+          gsap.to(img, { opacity: 0, duration: 0.4, ease: 'sine.inOut' });
         }
       }
       listen(strip, 'pointermove', function (e) {
@@ -197,32 +197,37 @@ export function init(container, a) {
         active = card;
         var t = reduce.matches ? 0 : 1;
         var dir = from && to ? (parts.indexOf(to) > parts.indexOf(from) ? 1 : -1) : 0;
+        // Bij het verlaten van de balk alles trager en zacht in en uit: een ease-out verliest de helft al in de eerste 50 ms
+        function pace(d, ease) { return card ? { duration: d * t, ease: ease } : { duration: (d + 0.1) * t, ease: 'sine.inOut' }; }
         if (from) { photoOut(from.left, 1, from.rot[0], dir, t); photoOut(from.right, -1, from.rot[1], dir, t); }
         if (to) { photoIn(to.left, 1, to.rot[0], dir, t); photoIn(to.right, -1, to.rot[1], dir, t); }
         var widths = finalWidths(card);
         parts.forEach(function (p, k) {
           if (p.link) { p.link.style.position = 'relative'; p.link.style.overflow = 'hidden'; }
           if (p.title) p.title.style.width = widths[k] + 'px';
-          if (!card) gsap.delayedCall(0.5 * t, function () { if (active) return; if (p.title) p.title.style.width = ''; if (p.link) { p.link.style.overflow = ''; p.link.style.position = ''; } });
+          if (!card) gsap.delayedCall(0.65 * t, function () { if (active) return; if (p.title) p.title.style.width = ''; if (p.link) { p.link.style.overflow = ''; p.link.style.position = ''; } });
           var on = p.card === card, dim = card && !on;
-          gsap.to(p.card, { flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : p.rest.bg, duration: 0.5 * t, ease: 'power3.out', overwrite: true, onComplete: card ? null : clear(p.card, 'flexGrow,backgroundColor') });
-          if (p.num) gsap.to(p.num, { opacity: on ? 0 : dim ? 0.44 : 1, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: card ? null : clear(p.num, 'opacity') });
+          gsap.to(p.card, Object.assign({ flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : p.rest.bg, overwrite: true, onComplete: card ? null : clear(p.card, 'flexGrow,backgroundColor') }, pace(0.5, 'power3.out')));
+          // Het nummer komt terug als de titel van die plek weg is
+          if (p.num) gsap.to(p.num, Object.assign({ opacity: on ? 0 : dim ? 0.44 : 1, delay: card ? 0 : 0.2 * t, overwrite: true, onComplete: card ? null : clear(p.num, 'opacity') }, pace(0.25, 'power2.out')));
           if (p.title && p.num) {
             // De titel schuift naar de plek van het nummer (bovenaan de kaart)
             var dy = on ? p.num.getBoundingClientRect().top - p.title.getBoundingClientRect().top + gsap.getProperty(p.title, 'y') : 0;
-            gsap.to(p.title, { y: dy, opacity: dim ? 0.34 : 1, duration: 0.5 * t, ease: 'power3.out', overwrite: 'auto', onComplete: card ? null : clear(p.title, 'transform,opacity') });
+            gsap.to(p.title, Object.assign({ y: dy, opacity: dim ? 0.34 : 1, overwrite: 'auto', onComplete: card ? null : clear(p.title, 'transform,opacity') }, pace(0.5, 'power3.out')));
           }
           if (p.detail) {
             if (on) {
+              // Is hij nog aan het weggaan (snel heen en weer), dan loopt hij door vanaf waar hij is
+              if (!p.detail.style.display) gsap.set(p.detail, { opacity: 0, y: rem(0.5) * t });
               gsap.set(p.detail, { display: 'flex', position: 'absolute', left: rem(1.5), width: widths[k], bottom: rem(1.5) });
               // overwrite true, ook bij weggaan: 'auto' laat een uitgestelde tween staan, en dan blijft de tekst hangen na een snelle hover
-              gsap.fromTo(p.detail, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: true });
+              gsap.to(p.detail, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: true });
             } else if (p.detail.style.display) {
-              gsap.to(p.detail, { opacity: 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(p.detail, { clearProps: 'all' }); } });
+              gsap.hoverOut(p.detail, { opacity: 0, y: rem(0.5), duration: 0.3 }, 'all');
             }
           }
           // Na de tekst-tween: die stopt met overwrite true alles wat er dan al op de tekst loopt, dus ook de kleur
-          p.inks.forEach(function (el, k) { gsap.to(el, { color: on ? contrast : p.rest.ink[k], duration: 0.35 * t, ease: 'power2.out', overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }); });
+          p.inks.forEach(function (el, k) { gsap.to(el, Object.assign({ color: on ? contrast : p.rest.ink[k], overwrite: 'auto', onComplete: card ? null : clear(el, 'color') }, pace(0.35, 'power2.out'))); });
         });
       }
       parts.forEach(function (p) {

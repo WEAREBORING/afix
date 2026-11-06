@@ -26,7 +26,7 @@ export function init(container, a) {
     function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
     [].forEach.call(cases, function (item) {
       var photo = item.querySelector('.case-card_feature-view .case-card_photo');
-      var view = item.querySelector('.case-card_logo-view'), bits = item.querySelectorAll('.case-card_tags, .case-card_text');
+      var view = item.querySelector('.case-card_logo-view');
       var tags = item.querySelector('.case-card_tags'), text = item.querySelector('.case-card_text');
       var on = false, rest;
       function show() {
@@ -39,17 +39,17 @@ export function init(container, a) {
         // Ruststand uit de class onthouden, zodat het terugkeren klopt
         rest = rest || getComputedStyle(view).backgroundColor;
         gsap.to(view, { backgroundColor: getComputedStyle(view).getPropertyValue('--_theme---surface--accent'), duration: 0.35 * t, ease: 'power2.out', overwrite: true });
-        if (tags) gsap.fromTo(tags, { opacity: 0, y: -rem(0.375) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
-        if (text) gsap.fromTo(text, { opacity: 0, y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+        if (tags) gsap.hoverIn(tags, { y: -rem(0.375) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
+        if (text) gsap.hoverIn(text, { y: rem(0.5) * t }, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.06 * t, ease: 'power2.out', overwrite: true });
       }
       function hide() {
         if (!on) return;
         on = false;
-        var t = reduce.matches ? 0 : 1;
-        if (photo) return gsap.to(photo, { scale: 1, duration: 0.8 * t, ease: 'expo.out', overwrite: true, onComplete: function () { gsap.set(photo, { clearProps: 'transform' }); } });
+        if (photo) return gsap.hoverOut(photo, { scale: 1, duration: 0.6 }, 'transform');
         if (!view) return;
-        gsap.to(view, { backgroundColor: rest, duration: 0.35 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(view, { clearProps: 'backgroundColor' }); } });
-        gsap.to(bits, { opacity: 0, duration: 0.25 * t, ease: 'power2.out', overwrite: true, onComplete: function () { gsap.set(bits, { clearProps: 'opacity,transform' }); } });
+        gsap.hoverOut(view, { backgroundColor: rest }, 'backgroundColor');
+        if (tags) gsap.hoverOut(tags, { opacity: 0, y: -rem(0.375) }, 'opacity,transform');
+        if (text) gsap.hoverOut(text, { opacity: 0, y: rem(0.5) }, 'opacity,transform');
       }
       listen(item, 'mouseenter', function () { if (desktop.matches) show(); });
       listen(item, 'mouseleave', hide);

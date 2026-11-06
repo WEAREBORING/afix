@@ -1,4 +1,4 @@
-/* Afix site.js v0.98: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v0.99: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -235,6 +235,16 @@ function scope(root) {
       ['to', 'from', 'fromTo', 'timeline', 'delayedCall'].forEach(function (name) {
         g[name] = function () { return track(gsap[name].apply(gsap, arguments)); };
       });
+      // Hover in voor alle kaarten: de beginstand alleen vanuit rust, anders loopt hij door vanaf waar hij is (snel heen en weer)
+      g.hoverIn = function (el, from, to) { if (!+gsap.getProperty(el, 'opacity')) gsap.set(el, from); return g.to(el, to); };
+      // Hover uit voor alle kaarten: trager en zonder ease-out, die verliest de helft al in de eerste 50 ms. props gaat na afloop uit de inline stijl
+      g.hoverOut = function (el, to, props) {
+        var t = reduce.matches ? 0 : 1, vars = Object.assign({ duration: 0.4, delay: 0, ease: 'sine.inOut', overwrite: true }, to);
+        vars.duration *= t;
+        vars.delay *= t;
+        vars.onComplete = function () { gsap.set(el, { clearProps: props }); };
+        return g.to(el, vars);
+      };
       fn(g);
     });
   };
