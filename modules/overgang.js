@@ -220,7 +220,9 @@ export function init(site) {
         beforeEnter: function (data) {
           // Even breed als in de gewone stroom: met een zichtbare scrollbalk zou de pagina anders verspringen bij het landen
           // Boven alles van de oude pagina, en met een eigen vlak: page-wrapper is doorzichtig, dan zou de oude pagina erdoor te zien zijn
-          var next = data.next.container, vars = { position: 'fixed', top: nav.getBoundingClientRect().height, left: 0, width: document.documentElement.clientWidth, zIndex: 40 };
+          // Terug en vooruit landen op de bewaarde scrollpositie: begin daar al, anders springt de pagina aan het eind
+          var next = data.next.container, back = data.trigger === 'back' || data.trigger === 'forward', from = back && scrolls[data.next.url.href.split('#')[0]] || 0;
+          var vars = { position: 'fixed', top: nav.getBoundingClientRect().height - from, left: 0, width: document.documentElement.clientWidth, zIndex: 40 };
           if (getComputedStyle(next).backgroundColor === 'rgba(0, 0, 0, 0)') vars.backgroundColor = getComputedStyle(document.body).backgroundColor;
           gsap.set(next, vars);
           var fresh = data.next.container.querySelector('[data-a-kept]');
