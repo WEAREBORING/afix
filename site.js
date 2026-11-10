@@ -1,4 +1,4 @@
-/* Afix site.js v1.07: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v1.08: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -76,10 +76,10 @@ function prepare(root) {
    kort na elkaar binnen met de blur-fade van de site. De andere menuknoppen in dezelfde groep worden grijs. Wissel je
    van menu terwijl er een open staat, dan blijft de achtergrond staan en past alleen de hoogte zich aan; de nieuwe
    kaarten komen van de kant waar je naartoe gaat. Met de muis wisselt een ander menu pas na een korte rust, zodat je
-   schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Een kaart toont op desktop in rust alleen de titel.
-   Hover (muis of toetsenbord), zoals de uitdagingen in de hero: geel vlak, donkere tekst, de omschrijving en een rond
-   pijlknopje komen onderin binnen en de titels van de andere kaarten dimmen; de kaart groeit niet (keuze van de
-   gebruiker). Onder 992px klapt het paneel open in het mobiele menu, met alleen de titels.
+   schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Een kaart toont op desktop in rust alleen de titel,
+   onderin. Hover (muis of toetsenbord), zoals de uitdagingen in de hero: geel vlak, donkere tekst, de titel schuift naar
+   boven, de kaart wordt breder, de omschrijving en een rond pijlknopje komen onderin binnen en de titels van de andere
+   kaarten dimmen. Onder 992px klapt het paneel open in het mobiele menu, met alleen de titels.
    Panelen, achtergrond en het mobiele menu staan in Webflow op display none: site.js zet ze inline aan. */
 each('[data-a-nav]', function (nav) {
   var hover = window.matchMedia('(hover: hover) and (min-width: 992px)');
@@ -180,23 +180,45 @@ each('[data-a-nav]', function (nav) {
     var list = panelOf(dd).querySelector('.nav_dropdown-list'), cards = cardsOf(dd), active = null;
     unhover.push(function () { active = null; });
     if (!list || !cards.length) return;
+    // De breedte die titel en tekst krijgen als de kaarten klaar zijn met groeien (de kaart onder de muis wordt 1,72 keer zo
+    // breed, zoals in de hero). Die zetten we meteen vast, zodat de tekst niet steeds opnieuw afbreekt; de kaart knipt af
+    // wat er nog niet in past
+    function finalWidths(card) {
+      var now = cards.map(function (c) { return c.style.flexGrow; });
+      cards.forEach(function (c) { c.style.flexGrow = c === card ? 1.72 : 1; });
+      var w = cards.map(function (c) { var cs = getComputedStyle(c); return c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); });
+      cards.forEach(function (c, k) { c.style.flexGrow = now[k]; });
+      return w;
+    }
     function set(card) {
       if (card === active || !gsap) return;
       active = card;
+      var widths = finalWidths(card);
       var t = reduce.matches ? 0 : 1, accent = css('--_theme---surface--accent'), contrast = css('--_theme---action--contrast');
       // Het gele vlak vervaagt vanuit doorzichtig geel, niet vanuit doorzichtig zwart (dat geeft een vale tussenkleur)
       var clear = 'rgba(' + gsap.utils.splitColor(accent).slice(0, 3).join(',') + ',0)';
-      var pace = card ? { duration: 0.35 * t, ease: 'power2.out' } : { duration: 0.4 * t, ease: 'sine.inOut' };
-      cards.forEach(function (c) {
-        var on = c === card, dim = !!card && !on, head = c.querySelector('.nav_card-header'), text = c.querySelector('.nav_card-text');
+      // Duur en curve als in de hero; bij het verlaten van de rij iets trager en zacht in en uit
+      function pace(d, ease) { return card ? { duration: d * t, ease: ease } : { duration: (d + 0.1) * t, ease: 'sine.inOut' }; }
+      cards.forEach(function (c, k) {
+        var on = c === card, dim = !!card && !on, title = c.querySelector('.nav_card-title'), text = c.querySelector('.nav_card-text');
+        var fixed = [title, text].filter(Boolean);
+        c.style.overflow = 'hidden';
+        fixed.forEach(function (el) { el.style.width = widths[k] + 'px'; });
+        // Na het verlaten van de rij, als alles weer op zijn plek staat: vaste breedtes en afknippen weer weg
+        if (!card) gsap.delayedCall(0.65 * t, function () { if (active) return; c.style.overflow = ''; fixed.forEach(function (el) { el.style.width = ''; }); });
         // Ook "in beeld" als de intree nog moet beginnen (vertraging 0,15 s): dan staat alleen de transform er al
         var detail = [text, c.querySelector('.nav_card-arrow')].filter(Boolean), shown = detail.some(function (el) { return el.style.opacity || el.style.transform; });
         function done(el, props) { return card ? null : function () { gsap.set(el, { clearProps: props }); }; }
         // overwrite 'auto': de kaart komt ook binnen met een tween, en die mag de hover niet stoppen
         if (!c.style.backgroundColor) gsap.set(c, { backgroundColor: clear });
-        gsap.to(c, Object.assign({ backgroundColor: on ? accent : clear, color: on ? contrast : css('--_theme---text--primary'), overwrite: 'auto', onComplete: done(c, 'backgroundColor,color') }, pace));
-        // De titels van de andere kaarten dimmen, zoals in de hero
-        if (head) gsap.to(head, Object.assign({ opacity: dim ? 0.34 : 1, overwrite: 'auto', onComplete: done(head, 'opacity') }, pace));
+        gsap.to(c, Object.assign({ flexGrow: on ? 1.72 : 1, backgroundColor: on ? accent : clear, overwrite: 'auto', onComplete: done(c, 'flexGrow,backgroundColor') }, pace(0.5, 'power3.out')));
+        gsap.to(c, Object.assign({ color: on ? contrast : css('--_theme---text--primary'), overwrite: 'auto', onComplete: done(c, 'color') }, pace(0.35, 'power2.out')));
+        // De titel staat in rust onderin en schuift naar de bovenkant van de kaart, zoals hero-card_title; de titels van de
+        // andere kaarten dimmen
+        if (title) {
+          var dy = on ? c.getBoundingClientRect().top + parseFloat(getComputedStyle(c).paddingTop) - title.getBoundingClientRect().top + gsap.getProperty(title, 'y') : 0;
+          gsap.to(title, Object.assign({ y: dy, opacity: dim ? 0.34 : 1, overwrite: 'auto', onComplete: done(title, 'transform,opacity') }, pace(0.5, 'power3.out')));
+        }
         // Omschrijving en het ronde pijlknopje komen onderin binnen, zoals hero-card_detail. Is het nog aan het weggaan
         // (snel heen en weer), dan loopt het door vanaf waar het is. overwrite true stopt ook een uitgestelde tween
         if (on) {
@@ -206,7 +228,7 @@ each('[data-a-nav]', function (nav) {
           gsap.to(detail, { opacity: 0, y: rem(0.5), duration: 0.3 * t, ease: 'sine.inOut', overwrite: true, onComplete: function () { gsap.set(detail, { clearProps: 'opacity,transform' }); } });
         }
         // Na de tween hierboven: die stopt met overwrite true alles wat er op de tekst loopt, dus ook de kleur
-        if (text) gsap.to(text, Object.assign({ color: on ? contrast : css('--_theme---text--muted'), overwrite: 'auto', onComplete: done(text, 'color') }, pace));
+        if (text) gsap.to(text, Object.assign({ color: on ? contrast : css('--_theme---text--muted'), overwrite: 'auto', onComplete: done(text, 'color') }, pace(0.35, 'power2.out')));
       });
     }
     cards.forEach(function (c) {
