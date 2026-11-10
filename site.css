@@ -1,4 +1,4 @@
-/* Afix site.css v0.6: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
+/* Afix site.css v0.7: alleen wat Webflow niet zelf kan. Bron: site.css in WEAREBORING/afix. */
 
 /* Vloeiende root-fontgrootte: 1rem = 16px op het ontwerpformaat (1440 x 900) en daaronder. Groter alleen als het scherm
    zowel breder als hoger is, tot 18px; zo past een sectie ook op een breed maar laag scherm.
@@ -27,7 +27,8 @@ html.lenis, html.lenis body { height: auto; }
   .nav_menu { position: absolute; top: 100%; left: 0; right: 0; display: none; flex-direction: column; align-items: stretch; gap: 1.75rem; height: calc(100vh - 4.25rem); height: calc(100dvh - 4.25rem); padding-top: 0.5rem; overflow-y: auto; overscroll-behavior: contain; background-color: var(--_theme---surface--page); }
   .nav_menu > .nav_links { flex-direction: column; align-items: stretch; gap: 0; margin-right: 0; padding: 0 var(--_layout---space--page-x); }
   .nav_dropdown { border-bottom: 1px solid var(--_theme---border--subtle); }
-  .nav_dropdown-toggle, .nav_link { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 1.125rem 0; font-size: var(--_typography---size--text-l); }
+  /* Vaste rijhoogte: de tekst in de knoppen is bijgesneden (text-box-trim), die van de link niet */
+  .nav_dropdown-toggle, .nav_link { display: flex; width: 100%; min-height: 3.75rem; justify-content: space-between; align-items: center; padding: 0; font-size: var(--_typography---size--text-l); }
   .nav_link { border-bottom: 1px solid var(--_theme---border--subtle); }
   .nav_dropdown-icon, .nav_link-icon { display: flex; width: 1rem; height: 1rem; }
   .nav_dropdown-panel { position: static; padding: 0; }
@@ -37,7 +38,7 @@ html.lenis, html.lenis body { height: auto; }
   .nav_card-title { padding-right: 0; line-height: 1.3; }
   .nav_card-text { display: none; }
   .nav_card-arrow { position: static; width: 1rem; height: 1rem; padding: 0; border: 0; opacity: 1; color: var(--_theme---text--muted); }
-  .nav_menu-meta { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; padding: 0 var(--_layout---space--page-x); }
+  .nav_menu-meta { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; padding: 0 var(--_layout---space--page-x); }
   /* De knop staat altijd onderin beeld; de lijst scrolt eronder door */
   .nav_menu-cta { position: sticky; bottom: 0; z-index: 1; flex-direction: column; margin-top: auto; padding: 1rem var(--_layout---space--page-x) 1.5rem; border-top: 1px solid var(--_theme---border--subtle); background-color: var(--_theme---surface--page); }
 }
