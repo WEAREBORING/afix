@@ -16,7 +16,7 @@
   .panel { position: absolute; left: 0; right: 0; z-index: 1; padding: 1rem; }
   .nav_dropdown-list { display: flex; width: 100%; }
   .nav_card { flex: 1 1 0; padding: 1rem; color: var(--_theme---text--primary); }
-  .nav_card-text { color: var(--_theme---text--muted); }
+  .nav_card-text { color: var(--_theme---text--muted); opacity: 0; }
   .nav_card-arrow { width: 1rem; height: 1rem; opacity: 0; }
   .tab { opacity: .3; background: transparent; color: #000; }
   .tab:first-child { opacity: 1; background: rgb(28, 33, 28); color: rgb(255, 255, 255); }
@@ -291,11 +291,12 @@
       // Megamenu op desktop: de achtergrond groeit tot de hoogte van het paneel en de kaarten zijn binnen
       checks['nav: achtergrond groeit tot het paneel'] = !innerWidth || innerWidth < 992 || Math.abs(backdrop.offsetHeight - p1.offsetHeight) < 1;
       checks['nav: kaarten komen binnen'] = [].every.call(p1.querySelectorAll('.nav_card'), function (c) { return getComputedStyle(c).opacity === '1'; });
-      // Hover op een kaart: geel vlak en het pijltje in beeld
+      // Hover op een kaart: geel vlak, omschrijving en pijlknopje in beeld (in rust alleen de titel)
       var card = p1.querySelector('.nav_card'), hovers = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+      checks['nav: in rust geen omschrijving'] = getComputedStyle(card.querySelector('.nav_card-text')).opacity === '0';
       card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
       setTimeout(function () {
-        checks['nav: hover maakt de kaart geel'] = !hovers || (getComputedStyle(card).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(card.querySelector('.nav_card-arrow')).opacity === '1');
+        checks['nav: hover maakt de kaart geel'] = !hovers || (getComputedStyle(card).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(card.querySelector('.nav_card-arrow')).opacity === '1' && getComputedStyle(card.querySelector('.nav_card-text')).opacity === '1');
         // Wisselen: het oude paneel gaat weg, de achtergrond blijft en krijgt de hoogte van het nieuwe
         t2.click();
         setTimeout(function () {
@@ -306,7 +307,7 @@
             rowNext();
           }, 700);
         }, 800);
-      }, 500);
+      }, 750);
     }, 900);
   }
   function caseChecks(done) {
