@@ -1,4 +1,4 @@
-/* Afix site.js v1.09: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v1.10: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -76,10 +76,10 @@ function prepare(root) {
    kort na elkaar binnen met de blur-fade van de site. De andere menuknoppen in dezelfde groep worden grijs. Wissel je
    van menu terwijl er een open staat, dan blijft de achtergrond staan en past alleen de hoogte zich aan; de nieuwe
    kaarten komen van de kant waar je naartoe gaat. Met de muis wisselt een ander menu pas na een korte rust, zodat je
-   schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Een kaart toont op desktop in rust alleen de titel,
-   onderin. Hover (muis of toetsenbord), zoals de uitdagingen in de hero: geel vlak, donkere tekst, de titel schuift naar
-   boven, de omschrijving en een rond pijlknopje komen onderin binnen en de titels van de andere kaarten dimmen. Alle
-   kaarten blijven even breed (keuze van de gebruiker); de rij wordt zo hoog als titel en omschrijving samen nodig hebben. Onder 992px klapt het paneel open in het mobiele menu, met alleen de titels.
+   schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Hover op een kaart (muis of toetsenbord): geel vlak,
+   donkere tekst, een rond pijlknopje rechtsboven schuift in en de andere kaarten dimmen, zoals de uitdagingen in de hero
+   maar zonder dat de kaart groeit en met de omschrijving altijd zichtbaar (keuze van de gebruiker). Onder 992px klapt het
+   paneel open in het mobiele menu.
    Panelen, achtergrond en het mobiele menu staan in Webflow op display none: site.js zet ze inline aan. */
 each('[data-a-nav]', function (nav) {
   var hover = window.matchMedia('(hover: hover) and (min-width: 992px)');
@@ -105,18 +105,6 @@ each('[data-a-nav]', function (nav) {
     parts.forEach(function (el) { el.removeAttribute('style'); });
     unhover[drops.indexOf(dd)]();
   }
-  // Paneel tonen. Desktop: de kaarten zijn minstens zo hoog dat de titel (bij hover boven) en de omschrijving (los onderin)
-  // niet tegen elkaar komen; met een korte omschrijving blijft de hoogte uit de class staan
-  function open(dd) {
-    var cards = cardsOf(dd);
-    panelOf(dd).style.display = 'flex';
-    if (!wide.matches || !cards.length) return;
-    var need = Math.max.apply(null, cards.map(function (c) {
-      var text = c.querySelector('.nav_card-text'), title = c.querySelector('.nav_card-title'), cs = getComputedStyle(c);
-      return Math.max(c.offsetHeight, (text ? text.offsetHeight : 0) + (title ? title.offsetHeight : 0) + rem(1) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom));
-    }));
-    cards.forEach(function (c) { c.style.minHeight = need + 'px'; });
-  }
   // Zonder animatie: GSAP nog niet geladen, reduced motion, paginaovergang of ander breakpoint
   function snap(dd) {
     drops.forEach(function (d) {
@@ -124,7 +112,7 @@ each('[data-a-nav]', function (nav) {
       if (gsap) gsap.killTweensOf(toggleOf(d));
       toggleOf(d).style.color = dimmed(d, dd) ? css('--_theme---text--muted') : '';
     });
-    if (dd) open(dd);
+    if (dd) panelOf(dd).style.display = 'flex';
     if (!backdrop) return;
     if (gsap) gsap.killTweensOf(backdrop);
     backdrop.removeAttribute('style');
@@ -140,7 +128,7 @@ each('[data-a-nav]', function (nav) {
     if (from) gsap.to(cardsOf(from), { opacity: 0, x: -dir * rem(0.75), duration: to ? 0.15 : 0.2, ease: 'sine.inOut', overwrite: true, onComplete: function () { if (current !== from) reset(from); } });
     if (to) {
       reset(to);
-      open(to);
+      panelOf(to).style.display = 'flex';
       h = panelOf(to).offsetHeight;
       gsap.fromTo(cardsOf(to), withBlur({ opacity: 0, x: dir * rem(1.5), y: dir ? 0 : rem(0.75) }, 'blur(0.5rem)'),
         withBlur({ opacity: 1, x: 0, y: 0, duration: 0.5, delay: dir ? 0.08 : 0.12, stagger: 0.04, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
@@ -198,33 +186,22 @@ each('[data-a-nav]', function (nav) {
       var t = reduce.matches ? 0 : 1, accent = css('--_theme---surface--accent'), contrast = css('--_theme---action--contrast');
       // Het gele vlak vervaagt vanuit doorzichtig geel, niet vanuit doorzichtig zwart (dat geeft een vale tussenkleur)
       var clear = 'rgba(' + gsap.utils.splitColor(accent).slice(0, 3).join(',') + ',0)';
-      // Duur en curve als in de hero; bij het verlaten van de rij iets trager en zacht in en uit
-      function pace(d, ease) { return card ? { duration: d * t, ease: ease } : { duration: (d + 0.1) * t, ease: 'sine.inOut' }; }
+      var pace = card ? { duration: 0.35 * t, ease: 'power2.out' } : { duration: 0.4 * t, ease: 'sine.inOut' };
       cards.forEach(function (c) {
-        var on = c === card, dim = !!card && !on, title = c.querySelector('.nav_card-title'), text = c.querySelector('.nav_card-text');
-        // Ook "in beeld" als de intree nog moet beginnen (vertraging 0,15 s): dan staat alleen de transform er al
-        var detail = [text, c.querySelector('.nav_card-arrow')].filter(Boolean), shown = detail.some(function (el) { return el.style.opacity || el.style.transform; });
+        var on = c === card, dim = !!card && !on, head = c.querySelector('.nav_card-header'), text = c.querySelector('.nav_card-text'), arrow = c.querySelector('.nav_card-arrow');
         function done(el, props) { return card ? null : function () { gsap.set(el, { clearProps: props }); }; }
         // overwrite 'auto': de kaart komt ook binnen met een tween, en die mag de hover niet stoppen
         if (!c.style.backgroundColor) gsap.set(c, { backgroundColor: clear });
-        gsap.to(c, Object.assign({ backgroundColor: on ? accent : clear, overwrite: 'auto', onComplete: done(c, 'backgroundColor') }, pace(0.5, 'power3.out')));
-        gsap.to(c, Object.assign({ color: on ? contrast : css('--_theme---text--primary'), overwrite: 'auto', onComplete: done(c, 'color') }, pace(0.35, 'power2.out')));
-        // De titel staat in rust onderin en schuift naar de bovenkant van de kaart, zoals hero-card_title; de titels van de
-        // andere kaarten dimmen
-        if (title) {
-          var dy = on ? c.getBoundingClientRect().top + parseFloat(getComputedStyle(c).paddingTop) - title.getBoundingClientRect().top + gsap.getProperty(title, 'y') : 0;
-          gsap.to(title, Object.assign({ y: dy, opacity: dim ? 0.34 : 1, overwrite: 'auto', onComplete: done(title, 'transform,opacity') }, pace(0.5, 'power3.out')));
-        }
-        // Omschrijving en het ronde pijlknopje komen onderin binnen, zoals hero-card_detail. Is het nog aan het weggaan
-        // (snel heen en weer), dan loopt het door vanaf waar het is. overwrite true stopt ook een uitgestelde tween
+        gsap.to(c, Object.assign({ backgroundColor: on ? accent : clear, color: on ? contrast : css('--_theme---text--primary'), overwrite: 'auto', onComplete: done(c, 'backgroundColor,color') }, pace));
+        if (text) gsap.to(text, Object.assign({ color: on ? contrast : css('--_theme---text--muted'), overwrite: 'auto', onComplete: done(text, 'color') }, pace));
+        gsap.to([head, text].filter(Boolean), Object.assign({ opacity: dim ? 0.4 : 1, overwrite: 'auto', onComplete: done([head, text].filter(Boolean), 'opacity') }, pace));
+        if (!arrow) return;
         if (on) {
-          if (!shown) gsap.set(detail, { y: rem(0.5) });
-          gsap.to(detail, { opacity: 1, y: 0, duration: 0.4 * t, delay: 0.15 * t, ease: 'power3.out', overwrite: true });
-        } else if (shown) {
-          gsap.to(detail, { opacity: 0, y: rem(0.5), duration: 0.3 * t, ease: 'sine.inOut', overwrite: true, onComplete: function () { gsap.set(detail, { clearProps: 'opacity,transform' }); } });
+          if (!+gsap.getProperty(arrow, 'opacity')) gsap.set(arrow, { x: -rem(0.5) });
+          gsap.to(arrow, { opacity: 1, x: 0, duration: 0.35 * t, ease: 'power3.out', overwrite: true });
+        } else if (arrow.style.opacity) {
+          gsap.to(arrow, { opacity: 0, x: rem(0.25), duration: 0.25 * t, ease: 'sine.inOut', overwrite: true, onComplete: function () { gsap.set(arrow, { clearProps: 'opacity,transform' }); } });
         }
-        // Na de tween hierboven: die stopt met overwrite true alles wat er op de tekst loopt, dus ook de kleur
-        if (text) gsap.to(text, Object.assign({ color: on ? contrast : css('--_theme---text--muted'), overwrite: 'auto', onComplete: done(text, 'color') }, pace(0.35, 'power2.out')));
       });
     }
     cards.forEach(function (c) {
