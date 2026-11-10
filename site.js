@@ -1,4 +1,4 @@
-/* Afix site.js v1.05: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v1.06: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -68,49 +68,172 @@ function prepare(root) {
   }, root);
 }
 
-/* data-a-nav (Global - Nav): dropdowns en het mobiele menu, zonder Navbar of Dropdown van Webflow.
+/* data-a-nav (Global - Nav): menu's en het mobiele menu, zonder Navbar of Dropdown van Webflow.
    data-a-dropdown om elk menu met daarin -toggle (button) en -panel; data-a-nav-toggle (hamburger, onder 992px) opent
    data-a-nav-menu. Klik opent en sluit, op desktop met muis ook hover; Escape en een klik buiten de nav sluiten.
-   Panelen en het mobiele menu staan in Webflow op display none: site.js zet display flex inline. */
+   Desktop: het paneel staat over de volle breedte onder de balk, met een rij nav_card's. Daarachter ligt
+   data-a-nav-backdrop (nav_backdrop, krijt): die groeit naar beneden, het paneel wordt mee onthuld en de kaarten komen
+   kort na elkaar binnen met de blur-fade van de site. De andere menuknoppen in dezelfde groep worden grijs. Wissel je
+   van menu terwijl er een open staat, dan blijft de achtergrond staan en past alleen de hoogte zich aan; de nieuwe
+   kaarten komen van de kant waar je naartoe gaat. Met de muis wisselt een ander menu pas na een korte rust, zodat je
+   schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Hover op een kaart (muis of toetsenbord): geel vlak,
+   donkere tekst, een pijltje schuift in en de andere kaarten dimmen, zoals de uitdagingen in de hero maar zonder dat de
+   kaart groeit (keuze van de gebruiker). Onder 992px klapt het paneel open in het mobiele menu.
+   Panelen, achtergrond en het mobiele menu staan in Webflow op display none: site.js zet ze inline aan. */
 each('[data-a-nav]', function (nav) {
   var hover = window.matchMedia('(hover: hover) and (min-width: 992px)');
-  var drops = [].slice.call(nav.querySelectorAll('[data-a-dropdown]'));
+  var wide = window.matchMedia('(min-width: 992px)');
+  var drops = [].slice.call(nav.querySelectorAll('[data-a-dropdown]')).filter(function (dd) { return toggleOf(dd) && panelOf(dd); });
   var navToggle = nav.querySelector('[data-a-nav-toggle]');
   var menu = nav.querySelector('[data-a-nav-menu]');
-  var gsap = null, tuckNav = null;
+  var backdrop = nav.querySelector('[data-a-nav-backdrop]');
+  var gsap = null, tuckNav = null, current = null, timer = 0, unhover = [];
   if (drops.length) withGsap(function (g) { gsap = g; });
   function toggleOf(dd) { return dd.querySelector('[data-a-dropdown-toggle]'); }
-  function isOpen(dd) { var t = toggleOf(dd); return !!t && t.getAttribute('aria-expanded') === 'true'; }
-  function setDrop(dd, open) {
-    var toggle = toggleOf(dd), panel = dd.querySelector('[data-a-dropdown-panel]');
-    if (!toggle || !panel) return;
-    var caret = toggle.querySelector('svg');
-    toggle.setAttribute('aria-expanded', open);
-    panel.style.display = open ? 'flex' : '';
-    // Pijltje draait mee; zolang GSAP nog laadt springt hij
-    if (caret && gsap) gsap.to(caret, { rotation: open ? 180 : 0, duration: reduce.matches ? 0 : 0.2, ease: 'power2.out', overwrite: true });
-    else if (caret) caret.style.transform = open ? 'rotate(180deg)' : '';
+  function panelOf(dd) { return dd.querySelector('[data-a-dropdown-panel]'); }
+  function cardsOf(dd) { return [].slice.call(panelOf(dd).querySelectorAll('.nav_card')); }
+  function css(name) { return getComputedStyle(nav).getPropertyValue(name).trim(); }
+  function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
+  // Grijs als er een ander menu uit dezelfde groep (nav_links) open staat
+  function dimmed(d, dd) { return !!dd && d !== dd && d.parentNode === dd.parentNode && wide.matches; }
+  // Paneel en kaarten terug naar de stand uit de classes
+  function reset(dd) {
+    var p = panelOf(dd), parts = [].slice.call(p.querySelectorAll('.nav_card, .nav_card *'));
+    if (gsap) gsap.killTweensOf([p].concat(parts));
+    p.removeAttribute('style');
+    parts.forEach(function (el) { el.removeAttribute('style'); });
+    unhover[drops.indexOf(dd)]();
   }
-  function closeDrops(except) { drops.forEach(function (dd) { if (dd !== except && isOpen(dd)) setDrop(dd, false); }); }
+  // Zonder animatie: GSAP nog niet geladen, reduced motion, paginaovergang of ander breakpoint
+  function snap(dd) {
+    drops.forEach(function (d) {
+      reset(d);
+      if (gsap) gsap.killTweensOf(toggleOf(d));
+      toggleOf(d).style.color = dimmed(d, dd) ? css('--_theme---text--muted') : '';
+    });
+    if (dd) panelOf(dd).style.display = 'flex';
+    if (!backdrop) return;
+    if (gsap) gsap.killTweensOf(backdrop);
+    backdrop.removeAttribute('style');
+    if (dd && wide.matches) backdrop.style.cssText = 'display: block; height: ' + panelOf(dd).offsetHeight + 'px';
+  }
+  // Wat buiten de achtergrond valt, blijft onzichtbaar: het paneel wordt mee onthuld terwijl de achtergrond groeit of krimpt
+  function clip() {
+    var h = backdrop.offsetHeight;
+    drops.forEach(function (d) { var p = panelOf(d); if (p.style.display) p.style.clipPath = 'inset(0 0 ' + Math.max(0, p.offsetHeight - h) + 'px 0)'; });
+  }
+  function desktop(from, to) {
+    var dir = from && to ? (drops.indexOf(to) > drops.indexOf(from) ? 1 : -1) : 0, h = 0;
+    if (from) gsap.to(cardsOf(from), { opacity: 0, x: -dir * rem(0.75), duration: to ? 0.15 : 0.2, ease: 'sine.inOut', overwrite: true, onComplete: function () { if (current !== from) reset(from); } });
+    if (to) {
+      reset(to);
+      panelOf(to).style.display = 'flex';
+      h = panelOf(to).offsetHeight;
+      gsap.fromTo(cardsOf(to), withBlur({ opacity: 0, x: dir * rem(1.5), y: dir ? 0 : rem(0.75) }, 'blur(0.5rem)'),
+        withBlur({ opacity: 1, x: 0, y: 0, duration: 0.5, delay: dir ? 0.08 : 0.12, stagger: 0.04, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
+    }
+    if (!backdrop) return;
+    backdrop.style.display = 'block';
+    // Meteen afknippen, anders staat de rand van de kaartenrij een frame lang onder een lege achtergrond
+    clip();
+    // Openen 0,5 s, wisselen 0,45 s, sluiten sneller en zacht in en uit
+    gsap.to(backdrop, { height: h, duration: !from ? 0.5 : to ? 0.45 : 0.35, delay: to ? 0 : 0.05, ease: !from ? 'power4.out' : to ? 'power3.out' : 'power3.inOut', overwrite: true, onUpdate: clip, onComplete: to ? null : function () { backdrop.removeAttribute('style'); } });
+    var muted = css('--_theme---text--muted'), primary = css('--_theme---text--primary');
+    drops.forEach(function (d) {
+      var t = toggleOf(d), off = dimmed(d, to);
+      gsap.to(t, { color: off ? muted : primary, duration: 0.25, ease: 'power2.out', overwrite: true, onComplete: off ? null : function () { gsap.set(t, { clearProps: 'color' }); } });
+    });
+  }
+  function mobile(from, to) {
+    if (from) {
+      var fp = panelOf(from);
+      fp.style.overflow = 'hidden';
+      gsap.to(fp, { height: 0, marginTop: 0, duration: 0.3, ease: 'power3.inOut', overwrite: true, onComplete: function () { if (current !== from) reset(from); } });
+    }
+    if (!to) return;
+    var tp = panelOf(to);
+    reset(to);
+    tp.style.cssText = 'display: flex; overflow: hidden';
+    gsap.fromTo(tp, { height: 0, marginTop: 0 }, { height: 'auto', marginTop: getComputedStyle(tp).marginTop, duration: 0.45, ease: 'power3.out', overwrite: true, onComplete: function () { tp.style.cssText = 'display: flex'; } });
+    gsap.fromTo(cardsOf(to), { opacity: 0, y: rem(0.5) }, { opacity: 1, y: 0, duration: 0.4, delay: 0.08, stagger: 0.04, ease: 'power3.out', overwrite: true, clearProps: 'opacity,transform' });
+  }
+  // dd openen, of null: alles dicht
+  function show(dd, instant) {
+    var from = current;
+    if (dd === from) return;
+    current = dd;
+    drops.forEach(function (d) {
+      var t = toggleOf(d), caret = t.querySelector('svg'), on = d === dd;
+      if (t.getAttribute('aria-expanded') === String(on)) return;
+      t.setAttribute('aria-expanded', on);
+      // Pijltje draait mee; zolang GSAP nog laadt springt hij
+      if (caret && gsap) gsap.to(caret, { rotation: on ? 180 : 0, duration: reduce.matches || instant ? 0 : 0.2, ease: 'power2.out', overwrite: true });
+      else if (caret) caret.style.transform = on ? 'rotate(180deg)' : '';
+    });
+    if (!gsap || instant || reduce.matches) snap(dd);
+    else if (wide.matches) desktop(from, dd);
+    else mobile(from, dd);
+  }
+  // Hover op de kaarten (desktop met muis, of toetsenbordfocus)
+  drops.forEach(function (dd) {
+    var list = panelOf(dd).querySelector('.nav_dropdown-list'), cards = cardsOf(dd), active = null;
+    unhover.push(function () { active = null; });
+    if (!list || !cards.length) return;
+    function set(card) {
+      if (card === active || !gsap) return;
+      active = card;
+      var t = reduce.matches ? 0 : 1, accent = css('--_theme---surface--accent'), contrast = css('--_theme---action--contrast');
+      // Het gele vlak vervaagt vanuit doorzichtig geel, niet vanuit doorzichtig zwart (dat geeft een vale tussenkleur)
+      var clear = 'rgba(' + gsap.utils.splitColor(accent).slice(0, 3).join(',') + ',0)';
+      var pace = card ? { duration: 0.35 * t, ease: 'power2.out' } : { duration: 0.4 * t, ease: 'sine.inOut' };
+      cards.forEach(function (c) {
+        var on = c === card, dim = !!card && !on, head = c.querySelector('.nav_card-header'), text = c.querySelector('.nav_card-text'), arrow = c.querySelector('.nav_card-arrow');
+        function done(el, props) { return card ? null : function () { gsap.set(el, { clearProps: props }); }; }
+        // overwrite 'auto': de kaart komt ook binnen met een tween, en die mag de hover niet stoppen
+        if (!c.style.backgroundColor) gsap.set(c, { backgroundColor: clear });
+        gsap.to(c, Object.assign({ backgroundColor: on ? accent : clear, color: on ? contrast : css('--_theme---text--primary'), overwrite: 'auto', onComplete: done(c, 'backgroundColor,color') }, pace));
+        if (text) gsap.to(text, Object.assign({ color: on ? contrast : css('--_theme---text--muted'), overwrite: 'auto', onComplete: done(text, 'color') }, pace));
+        gsap.to([head, text].filter(Boolean), Object.assign({ opacity: dim ? 0.4 : 1, overwrite: 'auto', onComplete: done([head, text].filter(Boolean), 'opacity') }, pace));
+        if (!arrow) return;
+        if (on) {
+          if (!+gsap.getProperty(arrow, 'opacity')) gsap.set(arrow, { x: -rem(0.5) });
+          gsap.to(arrow, { opacity: 1, x: 0, duration: 0.35 * t, ease: 'power3.out', overwrite: true });
+        } else if (arrow.style.opacity) {
+          gsap.to(arrow, { opacity: 0, x: rem(0.25), duration: 0.25 * t, ease: 'sine.inOut', overwrite: true, onComplete: function () { gsap.set(arrow, { clearProps: 'opacity,transform' }); } });
+        }
+      });
+    }
+    cards.forEach(function (c) {
+      c.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && hover.matches) set(c); });
+      c.addEventListener('focusin', function (e) { if (hover.matches && e.target.matches(':focus-visible')) set(c); });
+    });
+    list.addEventListener('pointerleave', function () { set(null); });
+    list.addEventListener('focusout', function (e) { if (!list.contains(e.relatedTarget)) set(null); });
+  });
   function setMenu(open) {
     if (!navToggle || !menu) return;
     navToggle.setAttribute('aria-expanded', open);
     menu.style.display = open ? 'flex' : '';
   }
   drops.forEach(function (dd) {
-    var toggle = toggleOf(dd), timer;
-    if (!toggle) return;
-    toggle.addEventListener('click', function (e) {
+    toggleOf(dd).addEventListener('click', function (e) {
+      clearTimeout(timer);
       // Een muisklik op desktop opent alleen (de hover had hem al open); toetsenbord en touch wisselen
-      var open = (e.detail > 0 && hover.matches) || !isOpen(dd);
-      closeDrops(dd);
-      setDrop(dd, open);
+      show((e.detail > 0 && hover.matches) || current !== dd ? dd : null);
     });
-    dd.addEventListener('mouseenter', function () { if (!hover.matches) return; clearTimeout(timer); closeDrops(dd); setDrop(dd, true); });
-    // Vertraging: tussen knop en paneel zit een marge waar de muis even buiten de dropdown is
-    dd.addEventListener('mouseleave', function () { if (hover.matches) timer = setTimeout(function () { setDrop(dd, false); }, 200); });
-    dd.addEventListener('focusout', function (e) { if (e.relatedTarget && !dd.contains(e.relatedTarget)) setDrop(dd, false); });
+    // Staat er niets open, dan meteen; staat er al een menu open, dan pas na 0,09 s rust op deze knop
+    dd.addEventListener('mouseenter', function () {
+      if (!hover.matches) return;
+      clearTimeout(timer);
+      if (!current) show(dd);
+      else if (current !== dd) timer = setTimeout(function () { show(dd); }, 90);
+    });
+    // Vertraging: tussen knop en paneel zit een marge waar de muis even buiten het menu is
+    dd.addEventListener('mouseleave', function () { if (hover.matches) { clearTimeout(timer); timer = setTimeout(function () { show(null); }, 200); } });
+    dd.addEventListener('focusout', function (e) { if (e.relatedTarget && !dd.contains(e.relatedTarget) && current === dd) show(null); });
   });
+  // Ander breakpoint: alles dicht, zonder animatie (de panelen staan dan anders)
+  wide.addEventListener('change', function () { show(null, true); });
   if (navToggle && menu) navToggle.addEventListener('click', function () { setMenu(navToggle.getAttribute('aria-expanded') !== 'true'); });
   // Sticky (position in de class): de topbalk schuift weg bij omlaag scrollen en komt terug bij omhoog, zoals het prototype
   var bar = nav.querySelector('.nav_topbar');
@@ -133,13 +256,12 @@ each('[data-a-nav]', function (nav) {
   });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    var open = drops.filter(isOpen)[0];
-    if (open) { setDrop(open, false); toggleOf(open).focus(); }
+    if (current) { var t = toggleOf(current); show(null); t.focus(); }
     else if (navToggle && navToggle.getAttribute('aria-expanded') === 'true') { setMenu(false); navToggle.focus(); }
   });
-  document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { closeDrops(); setMenu(false); } });
+  document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { show(null); setMenu(false); } });
   // Bij een paginaovergang: menu's dicht en de topbalk terug
-  resetNav = function () { closeDrops(); setMenu(false); if (tuckNav) tuckNav(false); };
+  resetNav = function () { show(null, true); setMenu(false); if (tuckNav) tuckNav(false); };
 });
 
 /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het

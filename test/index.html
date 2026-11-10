@@ -10,7 +10,14 @@
   .card { display: inline-block; padding: 1rem; border: 1px solid #ccc; }
   #result { margin-top: 2rem; font-weight: bold; }
   /* Nabootsing van de Webflow-classes waar de modules op leunen */
-  .panel, .menu { display: none; }
+  .panel, .menu, .backdrop { display: none; }
+  [data-a-nav] { --_theme---surface--accent: #f9ca00; --_theme---action--contrast: #273327; --_theme---text--primary: #1d1d1b; --_theme---text--muted: rgba(29, 29, 27, 0.5); position: relative; }
+  .backdrop { position: absolute; left: 0; right: 0; height: 0; background: #f5f0e8; }
+  .panel { position: absolute; left: 0; right: 0; z-index: 1; padding: 1rem; }
+  .nav_dropdown-list { display: flex; width: 100%; }
+  .nav_card { flex: 1 1 0; padding: 1rem; color: var(--_theme---text--primary); }
+  .nav_card-text { color: var(--_theme---text--muted); }
+  .nav_card-arrow { width: 1rem; height: 1rem; opacity: 0; }
   .tab { opacity: .3; background: transparent; color: #000; }
   .tab:first-child { opacity: 1; background: rgb(28, 33, 28); color: rgb(255, 255, 255); }
   [role="tablist"] { position: relative; display: inline-flex; }
@@ -69,8 +76,9 @@
 
 <header data-a-nav>
   <div class="nav_topbar">Topbalk</div>
-  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Strategie <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
-  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Websites <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><a href="#">Link</a></div></div>
+  <div data-a-nav-backdrop class="backdrop"></div>
+  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Strategie <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><div class="nav_dropdown-list"><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a></div></div></div>
+  <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Websites <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><div class="nav_dropdown-list"><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a></div></div></div>
   <button type="button" aria-expanded="false" data-a-nav-toggle>Menu</button>
   <div data-a-nav-menu class="menu">Mobiel menu</div>
 </header>
@@ -277,11 +285,29 @@
     // GSAP is nu geladen: het pijltje draait met een tween
     // (eerst afwachten: een klik op de rijknop is een klik buiten de nav en sluit de dropdown)
     t1.click();
+    var backdrop = $('[data-a-nav-backdrop]'), p1 = dds[0].querySelector('.panel'), p2 = dds[1].querySelector('.panel');
     setTimeout(function () {
       checks['pijltje draait met GSAP'] = !!window.gsap && gsap.getProperty(t1.querySelector('svg'), 'rotation') === 180;
-      t1.click();
-      rowNext();
-    }, 400);
+      // Megamenu op desktop: de achtergrond groeit tot de hoogte van het paneel en de kaarten zijn binnen
+      checks['nav: achtergrond groeit tot het paneel'] = !innerWidth || innerWidth < 992 || Math.abs(backdrop.offsetHeight - p1.offsetHeight) < 1;
+      checks['nav: kaarten komen binnen'] = [].every.call(p1.querySelectorAll('.nav_card'), function (c) { return getComputedStyle(c).opacity === '1'; });
+      // Hover op een kaart: geel vlak en het pijltje in beeld
+      var card = p1.querySelector('.nav_card'), hovers = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+      card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+      setTimeout(function () {
+        checks['nav: hover maakt de kaart geel'] = !hovers || (getComputedStyle(card).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(card.querySelector('.nav_card-arrow')).opacity === '1');
+        // Wisselen: het oude paneel gaat weg, de achtergrond blijft en krijgt de hoogte van het nieuwe
+        t2.click();
+        setTimeout(function () {
+          checks['nav: wisselen houdt de achtergrond'] = !innerWidth || innerWidth < 992 || (getComputedStyle(p1).display === 'none' && !p1.getAttribute('style') && !card.getAttribute('style') && getComputedStyle(p2).display === 'flex' && Math.abs(backdrop.offsetHeight - p2.offsetHeight) < 1);
+          t2.click();
+          setTimeout(function () {
+            checks['nav: sluiten ruimt alles op'] = !backdrop.getAttribute('style') && !p2.getAttribute('style') && getComputedStyle(p2).display === 'none' && !t1.style.color;
+            rowNext();
+          }, 700);
+        }, 800);
+      }, 500);
+    }, 900);
   }
   function caseChecks(done) {
     // Hover op een case (alleen desktop met muis: in een smal venster telt hij als niet van toepassing)
