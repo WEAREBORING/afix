@@ -297,6 +297,8 @@
       card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
       setTimeout(function () {
         var title = card.querySelector('.nav_card-title');
+        var widths = [].map.call(p1.querySelectorAll('.nav_card'), function (c) { return c.offsetWidth; });
+        checks['nav: kaarten blijven even breed bij hover'] = Math.max.apply(null, widths) - Math.min.apply(null, widths) < 1;
         checks['nav: titel schuift bij hover naar boven'] = !hovers || Math.abs(title.getBoundingClientRect().top - card.getBoundingClientRect().top - parseFloat(getComputedStyle(card).paddingTop)) < 1;
         checks['nav: hover maakt de kaart geel'] = !hovers || (getComputedStyle(card).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(card.querySelector('.nav_card-arrow')).opacity === '1' && getComputedStyle(card.querySelector('.nav_card-text')).opacity === '1');
         // Wisselen: het oude paneel gaat weg, de achtergrond blijft en krijgt de hoogte van het nieuwe
