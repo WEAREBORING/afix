@@ -1,4 +1,4 @@
-/* Afix site.js v1.11: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v1.12: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -68,35 +68,53 @@ function prepare(root) {
   }, root);
 }
 
-/* data-a-nav (Global - Nav): menu's en het mobiele menu, zonder Navbar of Dropdown van Webflow.
-   data-a-dropdown om elk menu met daarin -toggle (button) en -panel; data-a-nav-toggle (hamburger, onder 992px) opent
+/* data-a-nav (Global - Nav): menu's en het hamburgermenu, zonder Navbar of Dropdown van Webflow.
+   data-a-dropdown om elk menu met daarin -toggle (button) en -panel; data-a-nav-toggle (hamburger, onder 1280px) opent
    data-a-nav-menu. Klik opent en sluit, op desktop met muis ook hover; Escape en een klik buiten de nav sluiten.
-   Desktop: het paneel staat over de volle breedte onder de balk, met een rij nav_card's. Daarachter ligt
+   Desktop (vanaf 1280px; de nav heeft ongeveer 1250px nodig): het paneel staat over de volle breedte onder de balk, met een rij nav_card's. Daarachter ligt
    data-a-nav-backdrop (nav_backdrop, krijt): die groeit naar beneden, het paneel wordt mee onthuld en de kaarten komen
    kort na elkaar binnen met de blur-fade van de site. De andere menuknoppen in dezelfde groep worden grijs. Wissel je
    van menu terwijl er een open staat, dan blijft de achtergrond staan en past alleen de hoogte zich aan; de nieuwe
    kaarten komen van de kant waar je naartoe gaat. Met de muis wisselt een ander menu pas na een korte rust, zodat je
    schuin naar een kaart kunt bewegen zonder onderweg te wisselen. Hover op een kaart (muis of toetsenbord): geel vlak,
    donkere tekst, een rond pijlknopje rechtsboven schuift in en de andere kaarten dimmen, zoals de uitdagingen in de hero
-   maar zonder dat de kaart groeit en met de omschrijving altijd zichtbaar (keuze van de gebruiker). Onder 992px klapt het
-   paneel open in het mobiele menu.
-   Panelen, achtergrond en het mobiele menu staan in Webflow op display none: site.js zet ze inline aan. */
+   maar zonder dat de kaart groeit en met de omschrijving altijd zichtbaar (keuze van de gebruiker).
+   Onder 1280px het hamburgermenu (stijl in site.css): de topbalk schuift weg, het menu wordt vanaf de header naar beneden
+   onthuld en de rijen komen kort na elkaar binnen met dezelfde blur-fade; de twee lijnen van de hamburger worden een kruis.
+   De pagina eronder scrolt niet mee. Een menu klapt open in de lijst en de andere rijen worden grijs; een tik op een kaart
+   geeft kort het gele vlak. Een klik op een link in het menu sluit het.
+   Panelen, achtergrond en het hamburgermenu staan op display none: site.js zet ze inline aan. */
 each('[data-a-nav]', function (nav) {
-  var hover = window.matchMedia('(hover: hover) and (min-width: 992px)');
-  var wide = window.matchMedia('(min-width: 992px)');
+  var hover = window.matchMedia('(hover: hover) and (min-width: 1280px)');
+  var wide = window.matchMedia('(min-width: 1280px)');
   var drops = [].slice.call(nav.querySelectorAll('[data-a-dropdown]')).filter(function (dd) { return toggleOf(dd) && panelOf(dd); });
   var navToggle = nav.querySelector('[data-a-nav-toggle]');
   var menu = nav.querySelector('[data-a-nav-menu]');
   var backdrop = nav.querySelector('[data-a-nav-backdrop]');
-  var gsap = null, tuckNav = null, current = null, timer = 0, unhover = [];
-  if (drops.length) withGsap(function (g) { gsap = g; });
+  // Losse links in het menu (Kennis) en de twee lijnen van de hamburger
+  var links = menu ? [].slice.call(menu.querySelectorAll('.nav_link')) : [];
+  var lines = navToggle ? [].slice.call(navToggle.querySelectorAll('path')) : [];
+  var gsap = null, tuckNav = null, current = null, timer = 0, unhover = [], menuOpen = false;
+  if (drops.length || navToggle) withGsap(function (g) { gsap = g; });
   function toggleOf(dd) { return dd.querySelector('[data-a-dropdown-toggle]'); }
   function panelOf(dd) { return dd.querySelector('[data-a-dropdown-panel]'); }
   function cardsOf(dd) { return [].slice.call(panelOf(dd).querySelectorAll('.nav_card')); }
   function css(name) { return getComputedStyle(nav).getPropertyValue(name).trim(); }
   function rem(n) { return n * parseFloat(getComputedStyle(document.documentElement).fontSize); }
-  // Grijs als er een ander menu uit dezelfde groep (nav_links) open staat
-  function dimmed(d, dd) { return !!dd && d !== dd && d.parentNode === dd.parentNode && wide.matches; }
+  // Grijs als er een ander menu open staat: op desktop uit dezelfde groep (nav_links), in het hamburgermenu elke andere rij
+  function dimmed(d, dd) { return !!dd && d !== dd && (!wide.matches || d.parentNode === dd.parentNode); }
+  // Kleur van de menuknoppen en, in het hamburgermenu, van de losse links
+  function tint(dd, instant) {
+    var muted = css('--_theme---text--muted'), primary = css('--_theme---text--primary');
+    drops.map(toggleOf).concat(links).forEach(function (t, i) {
+      var off = i < drops.length ? dimmed(drops[i], dd) : !!dd && !wide.matches;
+      if (gsap) gsap.killTweensOf(t, 'color');
+      if (instant || !gsap) { t.style.color = off ? muted : ''; return; }
+      gsap.to(t, { color: off ? muted : primary, duration: 0.25, ease: 'power2.out', onComplete: off ? null : function () { gsap.set(t, { clearProps: 'color' }); } });
+    });
+  }
+  // Doorzichtig geel: een geel vlak vervaagt daarvandaan, niet vanuit doorzichtig zwart (dat geeft een vale tussenkleur)
+  function clearOf(color) { return 'rgba(' + gsap.utils.splitColor(color).slice(0, 3).join(',') + ',0)'; }
   // Paneel en kaarten terug naar de stand uit de classes
   function reset(dd) {
     var p = panelOf(dd), parts = [].slice.call(p.querySelectorAll('.nav_card, .nav_card *'));
@@ -107,11 +125,8 @@ each('[data-a-nav]', function (nav) {
   }
   // Zonder animatie: GSAP nog niet geladen, reduced motion, paginaovergang of ander breakpoint
   function snap(dd) {
-    drops.forEach(function (d) {
-      reset(d);
-      if (gsap) gsap.killTweensOf(toggleOf(d));
-      toggleOf(d).style.color = dimmed(d, dd) ? css('--_theme---text--muted') : '';
-    });
+    drops.forEach(reset);
+    tint(dd, true);
     if (dd) panelOf(dd).style.display = 'flex';
     if (!backdrop) return;
     if (gsap) gsap.killTweensOf(backdrop);
@@ -139,13 +154,10 @@ each('[data-a-nav]', function (nav) {
     clip();
     // Openen 0,5 s, wisselen 0,45 s, sluiten sneller en zacht in en uit
     gsap.to(backdrop, { height: h, duration: !from ? 0.5 : to ? 0.45 : 0.35, delay: to ? 0 : 0.05, ease: !from ? 'power4.out' : to ? 'power3.out' : 'power3.inOut', overwrite: true, onUpdate: clip, onComplete: to ? null : function () { backdrop.removeAttribute('style'); } });
-    var muted = css('--_theme---text--muted'), primary = css('--_theme---text--primary');
-    drops.forEach(function (d) {
-      var t = toggleOf(d), off = dimmed(d, to);
-      gsap.to(t, { color: off ? muted : primary, duration: 0.25, ease: 'power2.out', overwrite: true, onComplete: off ? null : function () { gsap.set(t, { clearProps: 'color' }); } });
-    });
+    tint(to);
   }
   function mobile(from, to) {
+    tint(to);
     if (from) {
       var fp = panelOf(from);
       fp.style.overflow = 'hidden';
@@ -183,9 +195,7 @@ each('[data-a-nav]', function (nav) {
     function set(card) {
       if (card === active || !gsap) return;
       active = card;
-      var t = reduce.matches ? 0 : 1, accent = css('--_theme---surface--accent'), contrast = css('--_theme---action--contrast');
-      // Het gele vlak vervaagt vanuit doorzichtig geel, niet vanuit doorzichtig zwart (dat geeft een vale tussenkleur)
-      var clear = 'rgba(' + gsap.utils.splitColor(accent).slice(0, 3).join(',') + ',0)';
+      var t = reduce.matches ? 0 : 1, accent = css('--_theme---surface--accent'), contrast = css('--_theme---action--contrast'), clear = clearOf(accent);
       var pace = card ? { duration: 0.35 * t, ease: 'power2.out' } : { duration: 0.4 * t, ease: 'sine.inOut' };
       cards.forEach(function (c) {
         var on = c === card, dim = !!card && !on, head = c.querySelector('.nav_card-header'), text = c.querySelector('.nav_card-text'), arrow = c.querySelector('.nav_card-arrow');
@@ -210,11 +220,52 @@ each('[data-a-nav]', function (nav) {
     });
     list.addEventListener('pointerleave', function () { set(null); });
     list.addEventListener('focusout', function (e) { if (!list.contains(e.relatedTarget)) set(null); });
+    // Tik op een kaart (of klik in het hamburgermenu): kort het gele vlak, als teken dat hij reageert
+    cards.forEach(function (c) {
+      c.addEventListener('pointerdown', function (e) {
+        if (!gsap || reduce.matches || (hover.matches && e.pointerType === 'mouse')) return;
+        var clear = clearOf(css('--_theme---surface--accent'));
+        gsap.fromTo(c, { backgroundColor: clear }, { backgroundColor: css('--_theme---surface--accent'), duration: 0.15, ease: 'power2.out', overwrite: 'auto' });
+        function up() {
+          ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { c.removeEventListener(n, up); });
+          gsap.to(c, { backgroundColor: clear, duration: 0.4, delay: 0.1, ease: 'sine.inOut', overwrite: 'auto', onComplete: function () { gsap.set(c, { clearProps: 'backgroundColor' }); } });
+        }
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { c.addEventListener(n, up); });
+      });
+    });
   });
-  function setMenu(open) {
-    if (!navToggle || !menu) return;
+  // Hamburgermenu open of dicht; instant: zonder animatie (paginaovergang, ander breakpoint)
+  function setMenu(open, instant) {
+    if (!navToggle || !menu || (open === menuOpen && !instant)) return;
+    menuOpen = open;
     navToggle.setAttribute('aria-expanded', open);
-    menu.style.display = open ? 'flex' : '';
+    navToggle.setAttribute('aria-label', open ? 'Menu sluiten' : 'Menu openen');
+    // De pagina eronder scrolt niet mee; de lijst in het menu scrolt zelf, ook als Lenis loopt
+    document.documentElement.style.overflow = open ? 'hidden' : '';
+    if (lenis) { if (open) lenis.stop(); else lenis.start(); }
+    if (open) { menu.setAttribute('data-lenis-prevent', ''); if (tuckNav) tuckNav(true); }
+    else if (tuckNav && window.scrollY < 40) tuckNav(false);
+    var rows = [].slice.call(menu.querySelectorAll('.nav_dropdown, .nav_link, .nav_menu-meta, .nav_menu-cta'));
+    var t = gsap && !instant && !reduce.matches ? 1 : 0;
+    function closed() {
+      if (gsap) gsap.set(rows, { clearProps: 'opacity,transform,filter' });
+      menu.removeAttribute('style');
+      menu.removeAttribute('data-lenis-prevent');
+      show(null, true);
+    }
+    if (gsap) {
+      gsap.killTweensOf([menu].concat(rows));
+      // Twee lijnen worden een kruis: elk 3 eenheden naar het midden en 45 graden gedraaid
+      gsap.to(lines, { y: function (i) { return open ? (i ? -3 : 3) : 0; }, rotation: function (i) { return open ? (i ? -45 : 45) : 0; }, transformOrigin: '50% 50%', duration: 0.35 * t, ease: 'power3.inOut', overwrite: true });
+    }
+    if (open) {
+      menu.style.display = 'flex';
+      if (!t) return;
+      // Onthullen vanaf de header naar beneden, zoals de achtergrond van het desktopmenu groeit
+      gsap.fromTo(menu, { clipPath: 'inset(0% 0% 100% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.5, ease: 'power4.out', clearProps: 'clipPath' });
+      gsap.fromTo(rows, withBlur({ opacity: 0, y: rem(0.75) }, 'blur(0.5rem)'), withBlur({ opacity: 1, y: 0, duration: 0.5, delay: 0.12, stagger: 0.04, ease: 'power3.out', clearProps: 'opacity,transform,filter' }, 'blur(0rem)'));
+    } else if (!t) closed();
+    else gsap.to(menu, { clipPath: 'inset(0% 0% 100% 0%)', duration: 0.35, ease: 'power3.inOut', onComplete: closed });
   }
   drops.forEach(function (dd) {
     toggleOf(dd).addEventListener('click', function (e) {
@@ -234,8 +285,11 @@ each('[data-a-nav]', function (nav) {
     dd.addEventListener('focusout', function (e) { if (e.relatedTarget && !dd.contains(e.relatedTarget) && current === dd) show(null); });
   });
   // Ander breakpoint: alles dicht, zonder animatie (de panelen staan dan anders)
-  wide.addEventListener('change', function () { show(null, true); });
-  if (navToggle && menu) navToggle.addEventListener('click', function () { setMenu(navToggle.getAttribute('aria-expanded') !== 'true'); });
+  wide.addEventListener('change', function () { show(null, true); setMenu(false, true); });
+  if (navToggle && menu) {
+    navToggle.addEventListener('click', function () { setMenu(!menuOpen); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) setMenu(false); });
+  }
   // Sticky (position in de class): de topbalk schuift weg bij omlaag scrollen en komt terug bij omhoog, zoals het prototype
   var bar = nav.querySelector('.nav_topbar');
   document.documentElement.style.scrollPaddingTop = nav.offsetHeight - (bar ? bar.offsetHeight : 0) + 'px';
@@ -250,7 +304,7 @@ each('[data-a-nav]', function (nav) {
     window.addEventListener('scroll', function () {
       var y = window.scrollY;
       if (y < 40) tuck(false);
-      else if (y > last + 3 && !(navToggle && navToggle.getAttribute('aria-expanded') === 'true')) tuck(true);
+      else if (y > last + 3 && !menuOpen) tuck(true);
       else if (y < last - 3) tuck(false);
       last = y;
     }, { passive: true });
@@ -258,11 +312,11 @@ each('[data-a-nav]', function (nav) {
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (current) { var t = toggleOf(current); show(null); t.focus(); }
-    else if (navToggle && navToggle.getAttribute('aria-expanded') === 'true') { setMenu(false); navToggle.focus(); }
+    else if (menuOpen) { setMenu(false); navToggle.focus(); }
   });
   document.addEventListener('click', function (e) { if (!nav.contains(e.target)) { show(null); setMenu(false); } });
   // Bij een paginaovergang: menu's dicht en de topbalk terug
-  resetNav = function () { show(null, true); setMenu(false); if (tuckNav) tuckNav(false); };
+  resetNav = function () { show(null, true); setMenu(false, true); if (tuckNav) tuckNav(false); };
 });
 
 /* GSAP: gebruikt Webflow zelf al gsap (bijvoorbeeld voor de nav), dan nemen we die. Anders laden we hem van het

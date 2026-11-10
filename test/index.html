@@ -79,8 +79,8 @@
   <div data-a-nav-backdrop class="backdrop"></div>
   <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Strategie <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><div class="nav_dropdown-list"><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a></div></div></div>
   <div data-a-dropdown><button type="button" aria-expanded="false" data-a-dropdown-toggle>Websites <svg width="8" height="8"></svg></button><div data-a-dropdown-panel class="panel"><div class="nav_dropdown-list"><a class="nav_card" href="#"><div class="nav_card-header"><div class="nav_card-title">Kaart</div><div class="nav_card-arrow"></div></div><div class="nav_card-text">Tekst</div></a></div></div></div>
-  <button type="button" aria-expanded="false" data-a-nav-toggle>Menu</button>
-  <div data-a-nav-menu class="menu">Mobiel menu</div>
+  <button type="button" aria-expanded="false" data-a-nav-toggle>Menu <svg width="20" height="20" viewBox="0 0 20 20"><path d="M3 7h14" stroke="#000"/><path d="M3 13h14" stroke="#000"/></svg></button>
+  <div data-a-nav-menu class="menu">Mobiel menu <a class="nav_link" href="#menu">Kennis</a></div>
 </header>
 
 <div data-a-tabs="kennis">
@@ -289,17 +289,17 @@
     setTimeout(function () {
       checks['pijltje draait met GSAP'] = !!window.gsap && gsap.getProperty(t1.querySelector('svg'), 'rotation') === 180;
       // Megamenu op desktop: de achtergrond groeit tot de hoogte van het paneel en de kaarten zijn binnen
-      checks['nav: achtergrond groeit tot het paneel'] = !innerWidth || innerWidth < 992 || Math.abs(backdrop.offsetHeight - p1.offsetHeight) < 1;
+      checks['nav: achtergrond groeit tot het paneel'] = !innerWidth || innerWidth < 1280 || Math.abs(backdrop.offsetHeight - p1.offsetHeight) < 1;
       checks['nav: kaarten komen binnen'] = [].every.call(p1.querySelectorAll('.nav_card'), function (c) { return getComputedStyle(c).opacity === '1'; });
       // Hover op een kaart: geel vlak en het pijltje in beeld
-      var card = p1.querySelector('.nav_card'), hovers = matchMedia('(hover: hover) and (min-width: 992px)').matches;
+      var card = p1.querySelector('.nav_card'), hovers = matchMedia('(hover: hover) and (min-width: 1280px)').matches;
       card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
       setTimeout(function () {
         checks['nav: hover maakt de kaart geel'] = !hovers || (getComputedStyle(card).backgroundColor === 'rgb(249, 202, 0)' && getComputedStyle(card.querySelector('.nav_card-arrow')).opacity === '1');
         // Wisselen: het oude paneel gaat weg, de achtergrond blijft en krijgt de hoogte van het nieuwe
         t2.click();
         setTimeout(function () {
-          checks['nav: wisselen houdt de achtergrond'] = !innerWidth || innerWidth < 992 || (getComputedStyle(p1).display === 'none' && !p1.getAttribute('style') && !card.getAttribute('style') && getComputedStyle(p2).display === 'flex' && Math.abs(backdrop.offsetHeight - p2.offsetHeight) < 1);
+          checks['nav: wisselen houdt de achtergrond'] = !innerWidth || innerWidth < 1280 || (getComputedStyle(p1).display === 'none' && !p1.getAttribute('style') && !card.getAttribute('style') && getComputedStyle(p2).display === 'flex' && Math.abs(backdrop.offsetHeight - p2.offsetHeight) < 1);
           t2.click();
           setTimeout(function () {
             checks['nav: sluiten ruimt alles op'] = !backdrop.getAttribute('style') && !p2.getAttribute('style') && getComputedStyle(p2).display === 'none' && !t1.style.color;
@@ -403,7 +403,7 @@
           $('#werk [data-a-carousel-next]').click();
           setTimeout(function () {
             checks['rij weer vooruit'] = atCenter(4);
-            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(function () { detailChecks(cleanupChecks); }); }); }); }); }); }); }); }); }); }); });
+            caseChecks(function () { heroChecks(function () { pinChecks(function () { fillChecks(function () { valueChecks(function () { teamChecks(function () { menuChecks(function () { tuckChecks(function () { reviewsChecks(function () { lineChecks(function () { footerChecks(function () { kennisChecks(function () { detailChecks(cleanupChecks); }); }); }); }); }); }); }); }); }); }); }); });
           }, 1500);
         }, 1500);
       }, 1500);
@@ -679,6 +679,21 @@
         }, 1100);
       }, 300);
     }, 300);
+  }
+
+  function menuChecks(done) {
+    // Hamburgermenu: openen onthult het menu, de lijnen worden een kruis en de pagina staat stil; een klik op een link sluit
+    // het en ruimt alles op
+    var burger = $('[data-a-nav-toggle]'), menu = $('[data-a-nav-menu]'), lines = burger.querySelectorAll('path');
+    burger.click();
+    setTimeout(function () {
+      checks['menu: opent met kruis en stilstaande pagina'] = getComputedStyle(menu).display === 'flex' && !menu.style.clipPath && document.documentElement.style.overflow === 'hidden' && Math.abs(gsap.getProperty(lines[0], 'rotation') - 45) < 0.5 && burger.getAttribute('aria-label') === 'Menu sluiten' && getComputedStyle(menu.querySelector('.nav_link')).opacity === '1';
+      menu.querySelector('.nav_link').click();
+      setTimeout(function () {
+        checks['menu: link sluit en ruimt op'] = getComputedStyle(menu).display === 'none' && !menu.getAttribute('style') && !menu.hasAttribute('data-lenis-prevent') && !document.documentElement.style.overflow && Math.abs(gsap.getProperty(lines[0], 'rotation')) < 0.5 && burger.getAttribute('aria-expanded') === 'false';
+        done();
+      }, 700);
+    }, 900);
   }
 
   function tuckChecks(done) {
