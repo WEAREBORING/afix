@@ -13,7 +13,7 @@ export function init(container, a) {
     withGsap(function (gsap) {
       var holder = document.createElement('div'), footer = container.querySelector('footer');
       // p: 0 op zijn plek in de hero, 1 onderaan het scherm. drop: 1 bij de footer, omlaag uit beeld.
-      var move = { p: 0, drop: 0 }, floating = false, atFooter = false, dropped = false, fixed = false, dx = 0, dy = 0, start;
+      var move = { p: 0, drop: 0 }, floating = false, atFooter = false, dropped = false, fixed = false, dx = 0, dy = 0, start, slide;
       var fixedStyle = { position: 'fixed', left: '0', right: '0', bottom: 'max(1rem, env(safe-area-inset-bottom))', zIndex: '50', width: 'fit-content', margin: '0 auto', maxWidth: 'calc(100% - 2 * var(--_layout---space--page-x))' };
       holder.setAttribute('aria-hidden', 'true');
       if (current) {
@@ -67,7 +67,10 @@ export function init(container, a) {
         if (want !== floating) {
           floating = want;
           if (want && !fixed) setFixed(true);
-          gsap.to(move, { p: want ? 1 : 0, duration: time(0.9), ease: 'power3.inOut', overwrite: 'auto', onUpdate: render, onComplete: function () { if (!want) setFixed(false); } });
+          // De vorige meteen stoppen: overwrite 'auto' doet dat pas bij de eerste render van de nieuwe, en in die frame kan
+          // de terugweg nog net aflopen en de balk losmaken terwijl hij weer zweeft (dan ging setFixed(false) later twee keer)
+          if (slide) slide.kill();
+          slide = gsap.to(move, { p: want ? 1 : 0, duration: time(0.9), ease: 'power3.inOut', onUpdate: render, onComplete: function () { if (!want) setFixed(false); } });
         }
         var drop = floating && atFooter;
         if (drop !== dropped) {
