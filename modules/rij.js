@@ -5,7 +5,7 @@ export function init(container, a) {
   /* data-a-row (rijen op de kennispagina): een zijwaarts scrollende rij zonder kopieën, zodat filteren werkt. Met muis slepen
      of de pijlknoppen (Element - Pijlknoppen in dezelfde data-a-row), op touch vegen. Aan het begin en eind vervaagt de pijl. */
   each('[data-a-row]', function (row) {
-    var list = row.querySelector('.kennis-rij_list');
+    var list = row.querySelector('.kennis-rij_list, .kennis-uitgelicht_list');
     if (!list) return;
     var prev = row.querySelector('[data-a-carousel-prev]'), next = row.querySelector('[data-a-carousel-next]'), gsap = null;
     var mouse = window.matchMedia('(hover: hover)'), drag = null, dragged = false;

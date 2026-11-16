@@ -5,7 +5,8 @@ export function init(container, a) {
   /* data-a-filter (Element - Kennisfilter): zoeken en expertise kiezen, op de kaarten in elke data-a-filter-list naast het filter.
      Waarde van data-a-filter-list: het aantal kaarten zonder filter. data-a-filter-more (knop): zoveel kaarten erbij per klik,
      en dan telt het filter ook met pagina's. data-a-filter-group verdwijnt als er in zijn lijst niets overblijft. De keuzes
-     komen uit de labels op de kaarten (het laatste label in kennis-card_tags), dus er staat nooit een lege expertise tussen. */
+     zijn de vaste chips in data-a-filter-panel (de eerste is "alle"); een chip past op het laatste label van een kaart
+     (kennis-card_tags) of rij (kennis-regel_label). data-a-filter-count toont op een lijstpagina het aantal resultaten. */
   each('[data-a-filter]', function (root) {
     var sets = [].map.call(root.parentNode.querySelectorAll('[data-a-filter-list]'), function (list) {
       return { list: list, group: list.closest('[data-a-filter-group]'), limit: num(list, 'data-a-filter-list', 12), items: [].slice.call(list.children) };
@@ -14,7 +15,8 @@ export function init(container, a) {
     var input = root.querySelector('[data-a-filter-search]'), clear = root.querySelector('[data-a-filter-clear]');
     var toggle = root.querySelector('[data-a-filter-toggle]'), label = root.querySelector('[data-a-filter-label]'), panel = root.querySelector('[data-a-filter-panel]');
     var more = root.parentNode.querySelector('[data-a-filter-more]'), step = more ? num(more, 'data-a-filter-more', 12) : 0;
-    var count = step, query = '', expertise = '', all = label.textContent, gsap = null;
+    var counter = root.querySelector('[data-a-filter-count]'), options = [].slice.call(panel.querySelectorAll('button'));
+    var count = step, query = '', expertise = '', gsap = null;
     withGsap(function (g) { gsap = g; });
     var empty = document.createElement('div');
     empty.className = 'kennis_empty';
@@ -24,7 +26,7 @@ export function init(container, a) {
     root.parentNode.insertBefore(empty, root.nextSibling);
     undo(function () { empty.remove(); });
     function tagOf(item) {
-      var tags = item.querySelectorAll('.kennis-card_tags .tag');
+      var tags = item.querySelectorAll('.kennis-card_tags .tag, .kennis-regel_label .tag');
       return tags.length ? tags[tags.length - 1].textContent.trim() : '';
     }
     function apply() {
@@ -47,39 +49,27 @@ export function init(container, a) {
       });
       empty.style.display = total ? 'none' : '';
       if (more) more.style.display = left ? 'flex' : '';
+      // shortcut: Webflow geeft hoogstens 100 items per lijst, dus vanaf 100 staat er "100+"; echt tellen kan pas met paginering
+      if (counter && more) counter.textContent = '(' + (total >= 100 ? '100+' : total) + ')';
       if (gsap && fresh.length && !reduce.matches) gsap.fromTo(fresh, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'opacity,transform,filter' });
     }
     function setOpen(open) {
       toggle.setAttribute('aria-expanded', open);
       panel.style.display = open ? 'flex' : '';
-      var caret = toggle.querySelector('svg'), t = reduce.matches ? 0 : 1;
-      if (!gsap) return;
-      if (caret) gsap.to(caret, { rotation: open ? 180 : 0, duration: 0.2 * t, ease: 'power2.out', overwrite: true });
-      if (open) gsap.fromTo(panel, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 * t, ease: 'power2.out', clearProps: 'opacity,transform' });
+      if (gsap && open) gsap.fromTo(panel, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: reduce.matches ? 0 : 0.25, ease: 'power2.out', clearProps: 'opacity,transform' });
     }
-    var names = [];
-    sets.forEach(function (set) { set.items.forEach(function (item) { var t = tagOf(item); if (t && names.indexOf(t) < 0) names.push(t); }); });
-    names.sort(function (a, b) { return a.localeCompare(b, 'nl'); });
-    [all].concat(names).forEach(function (name, i) {
-      var option = document.createElement('button');
-      option.type = 'button';
-      option.className = 'kennis-filter_option';
-      option.textContent = name;
+    options.forEach(function (option, i) {
       listen(option, 'click', function () {
-        expertise = i ? name : '';
-        label.textContent = name;
+        expertise = i ? option.textContent.trim() : '';
+        label.textContent = option.textContent;
+        options.forEach(function (o) { o.setAttribute('aria-pressed', o === option); });
         count = step;
-        setOpen(false);
-        toggle.focus();
         apply();
       });
-      panel.appendChild(option);
-      undo(function () { option.remove(); });
     });
     listen(input, 'input', function () { query = input.value.trim().toLowerCase(); count = step; apply(); });
     listen(clear, 'click', function () { input.value = ''; query = ''; count = step; input.focus(); apply(); });
     listen(toggle, 'click', function () { setOpen(toggle.getAttribute('aria-expanded') !== 'true'); });
-    listen(document, 'click', function (e) { if (!toggle.parentNode.contains(e.target)) setOpen(false); });
     listen(document, 'keydown', function (e) {
       if (e.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true') return;
       setOpen(false);

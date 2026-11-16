@@ -164,12 +164,12 @@
 <section id="kn-sec">
   <nav data-a-subnav="kennis" id="kn-nav"><a href="#a" class="w--current" style="flex: none; width: 6rem">Hier</a><a href="#b" style="flex: none; width: 6rem">Daar</a></nav>
   <div id="kn-a">
-    <div data-a-filter="kennis" id="kn-f"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button><div class="kennis-filter_panel" data-a-filter-panel></div></div></div>
+    <div data-a-filter="kennis" id="kn-f"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button></div><div class="kennis-filter_panel" data-a-filter-panel><button type="button" class="kennis-filter_chip" aria-pressed="true">Alle expertises</button><button type="button" class="kennis-filter_chip" aria-pressed="false">Strategie</button><button type="button" class="kennis-filter_chip" aria-pressed="false">Websites</button></div><span data-a-filter-count></span></div>
     <div data-a-row="a" data-a-filter-group id="kn-row"><button type="button" data-a-carousel-prev>v</button><button type="button" data-a-carousel-next>n</button>
       <div class="kennis-rij_list" data-a-filter-list="2" id="kn-list"><div>Alfa<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Beta<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Websites</span></div></div><div>Gamma<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Delta<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Websites</span></div></div><div>Epsilon<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div></div></div>
   </div>
   <div id="kn-b">
-    <div data-a-filter="kennis" id="kn-g"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button><div class="kennis-filter_panel" data-a-filter-panel></div></div></div>
+    <div data-a-filter="kennis" id="kn-g"><input data-a-filter-search aria-label="Zoek"><button type="button" data-a-filter-clear>x</button><div><button type="button" aria-expanded="false" data-a-filter-toggle><span data-a-filter-label>Alle expertises</span><svg width="8" height="8"></svg></button></div><div class="kennis-filter_panel" data-a-filter-panel><button type="button" class="kennis-filter_chip" aria-pressed="true">Alle expertises</button><button type="button" class="kennis-filter_chip" aria-pressed="false">Strategie</button><button type="button" class="kennis-filter_chip" aria-pressed="false">Websites</button></div><span data-a-filter-count></span></div>
     <div data-a-filter-list="2" id="kn-grid"><div>Een<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Twee<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Drie<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Vier<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div><div>Vijf<div class="kennis-card_tags"><span class="tag">Blog</span><span class="tag">Strategie</span></div></div></div>
     <button type="button" data-a-filter-more="2" id="kn-more" style="display: none">Meer laden</button>
   </div>
@@ -841,10 +841,11 @@
     var prev = row.querySelector('[data-a-carousel-prev]'), next = row.querySelector('[data-a-carousel-next]');
     function shown(el) { return [].filter.call(el.children, function (c) { return c.style.display !== 'none'; }).length; }
     function type(v) { input.value = v; input.dispatchEvent(new Event('input')); }
-    var empty = f.nextElementSibling, options = f.querySelectorAll('.kennis-filter_option');
+    var empty = f.nextElementSibling, options = f.querySelectorAll('.kennis-filter_chip');
     checks['datum: Nederlandse maand en jaar met apostrof'] = document.querySelector('.kennis-card_date').textContent === '30 jan ’26';
     checks['filter: zonder filter het afgesproken aantal kaarten'] = shown(list) === 2;
-    checks['filter: keuzes uit de labels, gesorteerd, met Alle expertises eerst'] = [].map.call(options, function (o) { return o.textContent; }).join() === 'Alle expertises,Strategie,Websites';
+    checks['filter: de vaste chips blijven staan, zonder kopieën'] = [].map.call(options, function (o) { return o.textContent; }).join() === 'Alle expertises,Strategie,Websites';
+    checks['teller: alleen op een lijst met Meer laden'] = f.querySelector('[data-a-filter-count]').textContent === '' && g.querySelector('[data-a-filter-count]').textContent === '(5)';
     type('delta');
     checks['filter: zoeken vindt ook kaarten buiten het aantal'] = shown(list) === 1 && list.children[3].style.display === '';
     type('zzz');
@@ -855,8 +856,7 @@
     toggle.click();
     checks['filter: keuzemenu opent'] = toggle.getAttribute('aria-expanded') === 'true' && getComputedStyle(panel).display === 'flex';
     options[2].click();
-    checks['filter: expertise kiezen filtert en sluit het menu'] = shown(list) === 2 && list.children[1].style.display === '' && list.children[3].style.display === '' && f.querySelector('[data-a-filter-label]').textContent === 'Websites' && getComputedStyle(panel).display === 'none';
-    toggle.click();
+    checks['filter: expertise kiezen filtert, de chip is gekozen en de rij blijft open'] = shown(list) === 2 && list.children[1].style.display === '' && list.children[3].style.display === '' && f.querySelector('[data-a-filter-label]').textContent === 'Websites' && options[2].getAttribute('aria-pressed') === 'true' && options[0].getAttribute('aria-pressed') === 'false' && getComputedStyle(panel).display === 'flex';
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     checks['filter: Escape sluit het menu'] = toggle.getAttribute('aria-expanded') === 'false';
     options[0].click();
