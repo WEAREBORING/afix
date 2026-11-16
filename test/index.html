@@ -192,6 +192,7 @@
 
 <p id="result">Bezig...</p>
 
+  <div data-a-historie id="hi"><div id="hi-stage" style="display: flex; flex-direction: column;"><h2>Historie</h2><div><div data-a-mijlpaal style="width: 20rem; height: 10rem;">Mijlpaal een</div><div data-a-mijlpaal style="width: 20rem; height: 10rem;">Mijlpaal twee</div></div></div></div>
 <script>
   // Spion voor de opruimcontrole, vóór site.js: welke observers lopen nog, wat is de DOM voordat site.js iets doet
   var spy = { observers: new Set(), signals: [], errors: [] };
@@ -947,7 +948,9 @@
   // Elke module laadt, en na opruimen blijft er niets lopen en staat de DOM weer zoals hij was. Daarna nog een keer starten en
   // opruimen, nu met een oog op de timers
   async function cleanupChecks() {
-    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'werk', 'teamlijst', 'overgang'];
+    var names = ['wacht', 'hero', 'pin', 'fill', 'waarden', 'team', 'footer-cta', 'lijnen', 'tabs', 'carousel', 'kaarten', 'detail', 'kennis-hero', 'rij', 'filter', 'werk', 'teamlijst', 'historie', 'overgang'];
+    var hi = document.getElementById('hi'), hiCards = hi.querySelectorAll('[data-a-mijlpaal]');
+    checks['historie: het component is hoog, het podium staat vast en de kaarten liggen op elkaar'] = innerWidth < 992 || (parseFloat(hi.style.height) > innerHeight * 2 && getComputedStyle(hi.firstElementChild).position === 'sticky' && getComputedStyle(hiCards[0]).position === 'absolute' && getComputedStyle(hiCards[1]).position === 'absolute');
     var navCurrent = document.querySelector('#kn-nav .w--current'), navPill = document.querySelector('#kn-nav .kennis_tab-pill');
     checks['kennisnavigatie: pil staat op de huidige link'] = !!navPill && Math.abs(gsap.getProperty(navPill, 'x') - navCurrent.offsetLeft) < 1 && Math.abs(navPill.offsetWidth - navCurrent.offsetWidth) < 1 && navCurrent.style.backgroundColor === 'transparent';
     var loaded = await Promise.all(names.map(function (n) { return import('../modules/' + n + '.js'); }));
