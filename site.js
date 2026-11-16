@@ -1,4 +1,4 @@
-/* Afix site.js v1.16: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
+/* Afix site.js v1.17: de kern (GSAP, Lenis, nav, formulieren, verbergen voor de intro) en de lader van modules/*.js. Bron: site.js in WEAREBORING/afix.
    Een module laadt alleen als zijn attribuut of class op de pagina staat; zie de tabel onder "Modules". Elk bestand komt van dezelfde tag. */
 'use strict';
 var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -336,7 +336,7 @@ function withGsap(fn) {
 /* Binnenkomen: de kop van Werk, de kop en het vertrouwd-blok van Reviews, de kop en kaarten van Kennis en Gerelateerd, de tekst, het formulier en de foto op contact, en de filters op /werk, de blokken op een case en de teamlijst en de blokken op een teamlid komen een keer
    binnen zodra ze in beeld komen, met dezelfde blur-fade als de hero (keuze van de gebruiker; het prototype doet alleen
    fade en omhoog; op een telefoon zonder blur). Reduced motion en zonder site.js: gewoon zichtbaar. */
-var arrivals = '.werk_header, .team-rij_header, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media, .werk-filter, .werk-detail_block, .werk-detail_quote-group, .team-lijst_list, .team-detail_person, .team-detail_intro, .team-detail_blok';
+var arrivals = '.werk_header, .team-rij_header, .prijzen_list-wrapper, .partners_list-wrapper, .reviews_header, .reviews_trust, .kennis_header, .kennis_panels, .kennis-filter, .kennis-rij_header, .kennis-gerelateerd_header, .kennis-gerelateerd_list-wrapper, .contact_text, .contact-form, .contact_media, .werk-filter, .werk-detail_block, .werk-detail_quote-group, .team-lijst_list, .team-detail_person, .team-detail_intro, .team-detail_blok';
 function initArrivals(root, a) {
   if (!reduce.matches) a.withGsap(function (gsap) {
     a.each(arrivals, function (el) {
@@ -371,6 +371,7 @@ var modules = [
   ['teamlijst', '[data-a-team-filter], [data-a-lid], [data-a-team-blok]'],
   ['kennis-hero', '[data-a-subnav], [data-a-page-hero]'],
   ['historie', '[data-a-historie]'],
+  ['prijs', '[data-a-prijs]'],
   ['rij', '[data-a-row]'],
   ['filter', '[data-a-filter], [data-a-filter-list]']
 ];
