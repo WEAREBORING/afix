@@ -16,7 +16,7 @@ export function init(container, a) {
     var list = cards.length ? cards[0].parentNode : null, wide = window.matchMedia('(min-width: 992px)');
     if (!stage || !list || reduce.matches) return;
     withGsap(function (gsap) {
-      var m = null, queued = false, all = [sec, stage, list].concat(cards), tilts = [-4, 3, -2.5, 4.5, -3.5, 2.5];
+      var m = null, queued = false, all = [sec, stage, list].concat(cards), tilts = [-2, 1.5, -1.25, 2.25, -1.75, 1.25];
       function release() {
         m = null;
         gsap.set(all, { clearProps: 'all' });
