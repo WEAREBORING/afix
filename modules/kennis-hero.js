@@ -97,11 +97,9 @@ export function init(container, a) {
     var box = hero.querySelector('.hero-kennis_background svg');
     var lines = box ? [].map.call(box.querySelectorAll('path'), function (path) {
       var total = path.getTotalLength(), m = path.getCTM(), size = box.getBoundingClientRect(), first = 1, last = 0;
-      // Loopt de lijn door onder de hero (svg met overflow: visible, zoals op /prijzenkast), dan telt een scherm eronder mee
-      var reach = size.height + (getComputedStyle(box).overflow === 'visible' ? window.innerHeight : 0);
       for (var i = 0; i <= 240; i++) {
         var p = path.getPointAtLength(total * i / 240), x = m.a * p.x + m.c * p.y + m.e, y = m.b * p.x + m.d * p.y + m.f;
-        if (x >= 0 && x <= size.width && y >= 0 && y <= reach) { first = Math.min(first, i / 240); last = Math.max(last, i / 240); }
+        if (x >= 0 && x <= size.width && y >= 0 && y <= size.height) { first = Math.min(first, i / 240); last = Math.max(last, i / 240); }
       }
       // Twee meetstappen ruimte: de lijn start en eindigt zo buiten beeld, anders springt het laatste stuk erbij
       first = Math.max(0, first - 2 / 240);
