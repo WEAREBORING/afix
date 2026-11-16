@@ -25,6 +25,8 @@ export function init(container, a) {
     var closing = values[0].parentElement.nextElementSibling, eyebrow = values[0].parentElement.previousElementSibling;
     var away = withBlur({ opacity: 0, y: '1.5rem' }, 'blur(0.75rem)');
     var light = rgbOf(cultuur, 'backgroundColor'), dark = rgbOf(section, 'backgroundColor'), ink = rgbOf(cultuur, 'color'), paper = rgbOf(section, 'color');
+    // Alleen een lichte sectie boven Cultuur kleurt mee (Werk op de home); een donkere hero, zoals op Over ons, blijft zoals hij is
+    if (werk && rgbOf(werk, 'backgroundColor').join() !== light.join()) werk = null;
     var rows = values.map(function (item, i) {
       var dir = i % 2 ? -1 : 1, rules = [item.querySelector('.kernwaarde_rule')];
       var title = item.querySelector('.kernwaarde_title'), text = item.querySelector('.kernwaarde_text');
